@@ -132,6 +132,8 @@ REST_FRAMEWORK = {
         "core.auth.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
+    "PAGE_SIZE": 10,
 }
 
 JWT_AUTH = {

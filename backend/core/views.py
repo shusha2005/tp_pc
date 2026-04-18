@@ -36,6 +36,15 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
         if price_lte:
             qs = qs.filter(price__lte=price_lte)
 
+        order = (self.request.query_params.get("order") or "").strip()
+        allowed = {"price": "price", "name": "name", "id": "id"}
+        if order:
+            desc = order.startswith("-")
+            key = order[1:] if desc else order
+            field = allowed.get(key)
+            if field:
+                qs = qs.order_by(f"-{field}" if desc else field, "id")
+
         return qs
 
 
@@ -94,6 +103,16 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         qs = qs.distinct()
+
+        order = (self.request.query_params.get("order") or "").strip()
+        allowed = {"number": "number", "id": "id", "club": "club_id"}
+        if order:
+            desc = order.startswith("-")
+            key = order[1:] if desc else order
+            field = allowed.get(key)
+            if field:
+                qs = qs.order_by(f"-{field}" if desc else field, "id")
+
         return qs
 
     @action(detail=False, methods=["get"], url_path="filters")
