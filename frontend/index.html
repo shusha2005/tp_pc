@@ -9,7 +9,39 @@
   <body>
     <main class="container">
       <h1>PC Club Booking</h1>
-      <p>Стартовая страница фронтенда. Позже подключим API.</p>
+      <p class="muted">
+        Регистрация через API: <code>POST /api/auth/register/</code>
+      </p>
+
+      <section class="card">
+        <h2>Регистрация</h2>
+        <form id="registerForm" class="form">
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" placeholder="user@example.com" required />
+          </label>
+          <label class="field">
+            <span>Username</span>
+            <input name="username" type="text" placeholder="nickname" required />
+          </label>
+          <label class="field">
+            <span>Телефон (необязательно)</span>
+            <input name="phone" type="tel" placeholder="+7..." />
+          </label>
+          <label class="field">
+            <span>Пароль</span>
+            <input name="password" type="password" placeholder="min 6 символов" minlength="6" required />
+          </label>
+
+          <div class="row">
+            <button type="submit">Создать аккаунт</button>
+            <button type="button" class="secondary" id="btnMe">Проверить /me</button>
+            <button type="button" class="danger" id="btnLogout">Выйти</button>
+          </div>
+        </form>
+
+        <pre id="out" class="out" aria-live="polite"></pre>
+      </section>
     </main>
     <script src="./script.js"></script>
   </body>
