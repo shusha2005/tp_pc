@@ -1,7 +1,8 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
-from .models import Booking, Club, Pc, PcPeripheral, Peripheral
+from .auth import get_user_by_login, hash_password, issue_tokens, verify_password
+from .models import Booking, Club, Pc, PcPeripheral, Peripheral, User
 
 
 class ClubSerializer(serializers.ModelSerializer):
@@ -48,12 +49,20 @@ class PcSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(required=False)
+    pc_id = serializers.IntegerField()
+
     class Meta:
         model = Booking
         fields = ["id", "start_time", "end_time", "total_price", "status", "created_at", "user_id", "pc_id"]
         read_only_fields = ["id", "created_at"]
 
     def create(self, validated_data):
+        user_id = validated_data.pop("user_id", None)
+        pc_id = validated_data.pop("pc_id")
+        if user_id is not None:
+            validated_data["user_id"] = user_id
+        validated_data["pc_id"] = pc_id
         try:
             return super().create(validated_data)
         except IntegrityError as e:
@@ -61,4 +70,44 @@ class BookingSerializer(serializers.ModelSerializer):
             if "bookings_no_overlap_per_pc" in msg or "exclude" in msg:
                 raise serializers.ValidationError({"non_field_errors": ["Этот ПК уже забронирован на выбранное время."]})
             raise
+
+
+class RegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField()
+    phone = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(min_length=6, write_only=True)
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            user = User.objects.create(
+                email=validated_data["email"],
+                username=validated_data["username"],
+                phone=validated_data.get("phone") or None,
+                password_hash=hash_password(validated_data["password"]),
+            )
+        return user
+
+
+class LoginSerializer(serializers.Serializer):
+    login = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        user = get_user_by_login(attrs["login"])
+        if not user or not verify_password(attrs["password"], user.password_hash):
+            raise serializers.ValidationError({"non_field_errors": ["Неверный логин или пароль."]})
+        attrs["user"] = user
+        return attrs
+
+
+class TokenPairSerializer(serializers.Serializer):
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+
+
+class MeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "username", "phone"]
 

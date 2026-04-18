@@ -12,6 +12,14 @@ class User(models.Model):
         db_table = "users"
         managed = False
 
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+
 
 class Club(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -95,9 +103,9 @@ class Booking(models.Model):
     id = models.BigAutoField(primary_key=True)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    total_price = models.DecimalField(max_digits=12, decimal_places=2)
-    status = models.TextField()
-    created_at = models.DateTimeField()
+    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.TextField(default="created")
+    created_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     pc = models.ForeignKey(Pc, on_delete=models.CASCADE)
 

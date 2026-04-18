@@ -128,8 +128,16 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "core.auth.JWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [],
+}
+
+JWT_AUTH = {
+    "ACCESS_TOKEN_TTL_SECONDS": int(os.getenv("JWT_ACCESS_TTL_SECONDS", "3600")),
+    "REFRESH_TOKEN_TTL_SECONDS": int(os.getenv("JWT_REFRESH_TTL_SECONDS", str(60 * 60 * 24 * 14))),
+    "ISSUER": os.getenv("JWT_ISSUER", "pc-club-booking"),
 }
 
 # Default primary key field type
