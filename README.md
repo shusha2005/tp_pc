@@ -26,7 +26,7 @@ docker compose up -d
 
 Подключение из DBeaver:
 - Host: `localhost`
-- Port: `5434`
+- Port: `5435`
 - User: `postgres`
 - Password: `postgres`
 - Database: `pc_club`
