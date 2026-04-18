@@ -51,6 +51,8 @@ class PcSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(required=False)
     pc_id = serializers.IntegerField()
+    total_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    status = serializers.CharField(required=False)
 
     class Meta:
         model = Booking
