@@ -7,9 +7,10 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: pc_club
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
+      - ./db:/docker-entrypoint-initdb.d:ro
 
 volumes:
   db_data:
