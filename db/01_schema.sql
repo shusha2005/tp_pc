@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.clubs (
   address     TEXT NOT NULL,
   phone       TEXT,
   description TEXT,
+  photo_url   TEXT,
   price       NUMERIC(12,2) NOT NULL CHECK (price >= 0)
 );
 
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.pcs (
   processor     TEXT,
   gpu           TEXT,
   ram           TEXT,
+  storage_type  TEXT CHECK (storage_type IN ('SSD','HDD','SSD+HDD')),
   monitor_model TEXT,
   status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','maintenance')),
   club_id       BIGINT NOT NULL REFERENCES public.clubs(id) ON DELETE CASCADE,

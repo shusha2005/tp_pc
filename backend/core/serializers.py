@@ -8,7 +8,7 @@ from .models import Booking, Club, Pc, PcPeripheral, Peripheral, Tariff, User
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ["id", "name", "address", "phone", "description", "price"]
+        fields = ["id", "name", "address", "phone", "description", "photo_url", "price"]
 
 
 class PeripheralSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class PcSerializer(serializers.ModelSerializer):
             "processor",
             "gpu",
             "ram",
+            "storage_type",
             "monitor_model",
             "status",
             "peripherals",
@@ -144,7 +145,7 @@ class AdminMeSerializer(serializers.Serializer):
 class ClubManageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ["id", "name", "address", "phone", "description", "price"]
+        fields = ["id", "name", "address", "phone", "description", "photo_url", "price"]
         read_only_fields = ["id"]
 
 
@@ -153,7 +154,7 @@ class PcManageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pc
-        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "monitor_model", "status"]
+        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "storage_type", "monitor_model", "status"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
