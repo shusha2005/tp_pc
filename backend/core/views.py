@@ -1,8 +1,11 @@
 from decimal import Decimal
+from datetime import datetime, time, timedelta
 
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .auth import issue_tokens
@@ -156,24 +159,128 @@ class BookingViewSet(viewsets.ModelViewSet):
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _resolve_price_per_hour(self, pc: Pc, moment):
+        local_dt = timezone.localtime(moment) if timezone.is_aware(moment) else moment
+        current_time = local_dt.time()
+        current_day = local_dt.weekday()
+
+        tariffs = Tariff.objects.filter(club_id=pc.club_id).filter(
+            Q(day_of_week=current_day) | Q(day_of_week__isnull=True)
+        )
+        tariffs = tariffs.filter(
+            Q(time_from__isnull=True, time_to__isnull=True)
+            | Q(time_from__lte=current_time, time_to__gt=current_time)
+        )
+        tariffs = tariffs.order_by("-day_of_week", "-time_from", "id")
+        tariff = tariffs.first()
+        return tariff.price_per_hour if tariff else pc.club.price
+
+    def _calculate_price_by_tariff(self, pc: Pc, start, end) -> Decimal:
+        if end <= start:
+            return Decimal("0.00")
+
+        total = Decimal("0")
+        cursor = start
+        step = timedelta(minutes=1)
+
+        while cursor < end:
+            next_cursor = min(cursor + step, end)
+            minutes = Decimal(str((next_cursor - cursor).total_seconds())) / Decimal("60")
+            hour_rate = Decimal(str(self._resolve_price_per_hour(pc, cursor)))
+            total += hour_rate * (minutes / Decimal("60"))
+            cursor = next_cursor
+
+        return total.quantize(Decimal("0.01"))
+
     def perform_create(self, serializer):
         user = getattr(self.request, "user", None)
         save_kwargs = {}
         if user and getattr(user, "id", None) and not serializer.validated_data.get("user_id"):
             save_kwargs["user_id"] = user.id
 
-        # максимально простой расчет цены, если клиент не прислал total_price:
-        # club.price * часы
+        # Расчет цены по тарифам клуба с fallback на базовую цену клуба.
         if serializer.validated_data.get("total_price") in (None, "", 0, Decimal("0")):
             pc = Pc.objects.select_related("club").get(id=serializer.validated_data["pc_id"])
             start = serializer.validated_data["start_time"]
             end = serializer.validated_data["end_time"]
-            hours = Decimal(str((end - start).total_seconds())) / Decimal("3600")
-            if hours < 0:
-                hours = Decimal("0")
-            save_kwargs["total_price"] = (pc.club.price * hours).quantize(Decimal("0.01"))
+            save_kwargs["total_price"] = self._calculate_price_by_tariff(pc, start, end)
 
         serializer.save(**save_kwargs)
+
+    @action(detail=False, methods=["get"], url_path="available-slots")
+    def available_slots(self, request):
+        pc_id_raw = request.query_params.get("pc_id")
+        date_raw = request.query_params.get("date")
+        if not pc_id_raw:
+            raise ValidationError({"pc_id": ["Параметр pc_id обязателен."]})
+        if not date_raw:
+            raise ValidationError({"date": ["Параметр date обязателен (YYYY-MM-DD)."]})
+
+        try:
+            pc_id = int(pc_id_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"pc_id": ["pc_id должен быть целым числом."]}) from exc
+
+        try:
+            duration_minutes = int(request.query_params.get("duration_minutes", "60"))
+            step_minutes = int(request.query_params.get("step_minutes", "30"))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"non_field_errors": ["duration_minutes и step_minutes должны быть целыми числами."]}) from exc
+        if duration_minutes <= 0 or step_minutes <= 0:
+            raise ValidationError({"non_field_errors": ["duration_minutes и step_minutes должны быть > 0."]})
+
+        try:
+            date_obj = datetime.strptime(date_raw, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValidationError({"date": ["Некорректный формат даты. Используйте YYYY-MM-DD."]}) from exc
+
+        pc = Pc.objects.select_related("club").filter(id=pc_id).first()
+        if not pc:
+            raise ValidationError({"pc_id": ["ПК не найден."]})
+
+        tz = timezone.get_current_timezone()
+        day_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)
+        day_end = day_start + timedelta(days=1)
+        duration = timedelta(minutes=duration_minutes)
+        step = timedelta(minutes=step_minutes)
+
+        bookings = (
+            Booking.objects.filter(pc_id=pc_id, status__in=["created", "confirmed"])
+            .filter(start_time__lt=day_end, end_time__gt=day_start)
+            .values("start_time", "end_time")
+            .order_by("start_time")
+        )
+        occupied = [(b["start_time"], b["end_time"]) for b in bookings]
+
+        def is_free(start_slot, end_slot):
+            for busy_start, busy_end in occupied:
+                if busy_start < end_slot and busy_end > start_slot:
+                    return False
+            return True
+
+        slots = []
+        current = day_start
+        while current + duration <= day_end:
+            slot_end = current + duration
+            if is_free(current, slot_end):
+                slots.append(
+                    {
+                        "start_time": current.isoformat(),
+                        "end_time": slot_end.isoformat(),
+                        "estimated_price": str(self._calculate_price_by_tariff(pc, current, slot_end)),
+                    }
+                )
+            current += step
+
+        return Response(
+            {
+                "pc_id": int(pc_id),
+                "date": date_obj.isoformat(),
+                "duration_minutes": duration_minutes,
+                "step_minutes": step_minutes,
+                "slots": slots,
+            }
+        )
 
 
 class AuthViewSet(viewsets.ViewSet):
