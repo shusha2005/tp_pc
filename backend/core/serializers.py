@@ -1,14 +1,14 @@
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
-from .auth import get_user_by_login, hash_password, issue_tokens, verify_password
-from .models import Booking, Club, Pc, PcPeripheral, Peripheral, User
+from .auth import get_admin_by_login, get_user_by_login, hash_password, verify_password
+from .models import Booking, Club, Pc, PcPeripheral, Peripheral, Tariff, User
 
 
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ["id", "name", "address", "phone", "description", "price"]
+        fields = ["id", "name", "address", "phone", "description", "photo_url", "price"]
 
 
 class PeripheralSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class PcSerializer(serializers.ModelSerializer):
             "processor",
             "gpu",
             "ram",
+            "storage_type",
             "monitor_model",
             "status",
             "peripherals",
@@ -103,6 +104,18 @@ class LoginSerializer(serializers.Serializer):
         return attrs
 
 
+class AdminLoginSerializer(serializers.Serializer):
+    login = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        admin = get_admin_by_login(attrs["login"])
+        if not admin or not verify_password(attrs["password"], admin.password_hash):
+            raise serializers.ValidationError({"non_field_errors": ["Неверный логин или пароль."]})
+        attrs["admin"] = admin
+        return attrs
+
+
 class TokenPairSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
@@ -112,4 +125,68 @@ class MeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "username", "phone"]
+
+
+class AdminMeSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    club_id = serializers.IntegerField(read_only=True)
+
+    def to_representation(self, instance):
+        return {
+            "id": instance.id,
+            "email": instance.email,
+            "username": instance.username,
+            "club_id": instance.club_id,
+        }
+
+
+class ClubManageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ["id", "name", "address", "phone", "description", "photo_url", "price"]
+        read_only_fields = ["id"]
+
+
+class PcManageSerializer(serializers.ModelSerializer):
+    club_id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = Pc
+        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "storage_type", "monitor_model", "status"]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        club_id = validated_data.pop("club_id", None)
+        if club_id is not None:
+            validated_data["club_id"] = club_id
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        club_id = validated_data.pop("club_id", None)
+        if club_id is not None:
+            validated_data["club_id"] = club_id
+        return super().update(instance, validated_data)
+
+
+class TariffSerializer(serializers.ModelSerializer):
+    club_id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = Tariff
+        fields = ["id", "club_id", "day_of_week", "time_from", "time_to", "price_per_hour"]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        club_id = validated_data.pop("club_id", None)
+        if club_id is not None:
+            validated_data["club_id"] = club_id
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        club_id = validated_data.pop("club_id", None)
+        if club_id is not None:
+            validated_data["club_id"] = club_id
+        return super().update(instance, validated_data)
 

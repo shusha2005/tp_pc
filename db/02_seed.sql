@@ -2,10 +2,10 @@
 
 BEGIN;
 
-INSERT INTO public.clubs (name, address, phone, description, price)
+INSERT INTO public.clubs (name, address, phone, description, photo_url, price)
 VALUES
-  ('Cyber Arena', 'г. Москва, ул. Пример, 1', '+7 999 111-22-33', 'Компьютерный клуб с современными ПК и периферией.', 250.00),
-  ('Night Raid', 'г. Москва, ул. Пример, 2', '+7 999 444-55-66', 'Турнирная зона и VIP-комнаты.', 300.00);
+  ('Cyber Arena', 'г. Москва, ул. Пример, 1', '+7 999 111-22-33', 'Компьютерный клуб с современными ПК и периферией.', 'https://example.com/images/cyber-arena.jpg', 250.00),
+  ('Night Raid', 'г. Москва, ул. Пример, 2', '+7 999 444-55-66', 'Турнирная зона и VIP-комнаты.', 'https://example.com/images/night-raid.jpg', 300.00);
 
 INSERT INTO public.admins (email, password_hash, username, club_id)
 VALUES
@@ -18,13 +18,13 @@ VALUES
   ('user2@example.com', 'demo_hash', 'user2', '+7 900 000-00-02');
 
 -- PCs
-INSERT INTO public.pcs (number, processor, gpu, ram, monitor_model, status, club_id)
-SELECT n, 'Intel Core i5-13600K', 'RTX 4070', '32 GB', 'ASUS 24\" 144Hz', 'active', c.id
+INSERT INTO public.pcs (number, processor, gpu, ram, storage_type, monitor_model, status, club_id)
+SELECT n, 'Intel Core i5-13600K', 'RTX 4070', '32 GB', 'SSD', 'ASUS 24\" 144Hz', 'active', c.id
 FROM generate_series(1, 6) AS n
 CROSS JOIN (SELECT id FROM public.clubs WHERE name = 'Cyber Arena' LIMIT 1) AS c;
 
-INSERT INTO public.pcs (number, processor, gpu, ram, monitor_model, status, club_id)
-SELECT n, 'AMD Ryzen 7 7800X3D', 'RTX 4080', '32 GB', 'LG 27\" 165Hz', 'active', c.id
+INSERT INTO public.pcs (number, processor, gpu, ram, storage_type, monitor_model, status, club_id)
+SELECT n, 'AMD Ryzen 7 7800X3D', 'RTX 4080', '32 GB', 'SSD+HDD', 'LG 27\" 165Hz', 'active', c.id
 FROM generate_series(1, 4) AS n
 CROSS JOIN (SELECT id FROM public.clubs WHERE name = 'Night Raid' LIMIT 1) AS c;
 

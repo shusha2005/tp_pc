@@ -65,6 +65,20 @@ input {
   outline: none;
 }
 
+select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--fg);
+  outline: none;
+}
+
+select:focus {
+  border-color: rgba(110, 168, 254, 0.6);
+  box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.15);
+}
+
 input:focus {
   border-color: rgba(110, 168, 254, 0.6);
   box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.15);
@@ -105,5 +119,28 @@ button.danger {
   border-radius: 10px;
   overflow: auto;
   max-height: 320px;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.item strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.inline {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
 }
 
