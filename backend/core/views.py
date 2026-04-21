@@ -6,14 +6,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .auth import issue_tokens
-from .models import Booking, Club, Pc, PcPeripheral
+from .models import Booking, Club, Pc, PcPeripheral, Tariff
+from .permissions import IsAdminPrincipal
 from .serializers import (
+    AdminLoginSerializer,
+    AdminMeSerializer,
     BookingSerializer,
     ClubSerializer,
+    ClubManageSerializer,
     LoginSerializer,
     MeSerializer,
     PcSerializer,
+    PcManageSerializer,
     RegisterSerializer,
+    TariffSerializer,
     TokenPairSerializer,
 )
 
@@ -143,6 +149,7 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all().order_by("-created_at")
     serializer_class = BookingSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         user = getattr(self.request, "user", None)
@@ -185,6 +192,56 @@ class AuthViewSet(viewsets.ViewSet):
         out = TokenPairSerializer({"access": tokens.access, "refresh": tokens.refresh})
         return Response(out.data)
 
+    @action(detail=False, methods=["post"], url_path="admin-login")
+    def admin_login(self, request):
+        serializer = AdminLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        admin = serializer.validated_data["admin"]
+        tokens = issue_tokens(admin, subject_type="admin")
+        out = TokenPairSerializer({"access": tokens.access, "refresh": tokens.refresh})
+        return Response(out.data)
+
     @action(detail=False, methods=["get"], url_path="me", permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         return Response(MeSerializer(request.user).data)
+
+    @action(detail=False, methods=["get"], url_path="admin-me", permission_classes=[IsAdminPrincipal])
+    def admin_me(self, request):
+        return Response(AdminMeSerializer(request.user).data)
+
+
+class AdminClubViewSet(viewsets.ModelViewSet):
+    serializer_class = ClubManageSerializer
+    permission_classes = [IsAdminPrincipal]
+    http_method_names = ["get", "patch", "put", "head", "options"]
+
+    def get_queryset(self):
+        return Club.objects.filter(id=self.request.user.club_id).order_by("id")
+
+
+class AdminPcViewSet(viewsets.ModelViewSet):
+    serializer_class = PcManageSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        return Pc.objects.filter(club_id=self.request.user.club_id).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
+
+    def perform_update(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
+
+
+class AdminTariffViewSet(viewsets.ModelViewSet):
+    serializer_class = TariffSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        return Tariff.objects.filter(club_id=self.request.user.club_id).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
+
+    def perform_update(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
