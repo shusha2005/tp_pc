@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS public.clubs (
   price       NUMERIC(12,2) NOT NULL CHECK (price >= 0)
 );
 
+ALTER TABLE public.clubs
+  ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
+CREATE TABLE IF NOT EXISTS public.club_photos (
+  id      BIGSERIAL PRIMARY KEY,
+  club_id BIGINT NOT NULL REFERENCES public.clubs(id) ON DELETE CASCADE,
+  url     TEXT NOT NULL
+);
+
 -- ADMINS (separate entity as in ER-diagram)
 CREATE TABLE IF NOT EXISTS public.admins (
   id            BIGSERIAL PRIMARY KEY,
@@ -41,12 +50,15 @@ CREATE TABLE IF NOT EXISTS public.pcs (
   processor     TEXT,
   gpu           TEXT,
   ram           TEXT,
-  storage_type  TEXT CHECK (storage_type IN ('SSD','HDD','SSD+HDD')),
+  storage_type  TEXT CHECK (storage_type IN ('SSD','HDD','SSD+HDD','NVMe')),
   monitor_model TEXT,
   status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','maintenance')),
   club_id       BIGINT NOT NULL REFERENCES public.clubs(id) ON DELETE CASCADE,
   UNIQUE (club_id, number)
 );
+
+ALTER TABLE public.pcs
+  ADD COLUMN IF NOT EXISTS storage_type TEXT;
 
 -- PERIPHERALS
 CREATE TABLE IF NOT EXISTS public.peripherals (
@@ -93,13 +105,20 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 );
 
 -- Prevent overlapping bookings per PC (no double booking)
-ALTER TABLE public.bookings
-  ADD CONSTRAINT bookings_no_overlap_per_pc
-  EXCLUDE USING gist (
-    pc_id WITH =,
-    tstzrange(start_time, end_time, '[)') WITH &&
-  )
-  WHERE (status IN ('created','confirmed'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'bookings_no_overlap_per_pc'
+  ) THEN
+    ALTER TABLE public.bookings
+      ADD CONSTRAINT bookings_no_overlap_per_pc
+      EXCLUDE USING gist (
+        pc_id WITH =,
+        tstzrange(start_time, end_time, '[)') WITH &&
+      )
+      WHERE (status IN ('created','confirmed'));
+  END IF;
+END$$;
 
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS bookings_user_id_idx ON public.bookings(user_id);
@@ -108,6 +127,7 @@ CREATE INDEX IF NOT EXISTS pcs_club_id_idx      ON public.pcs(club_id);
 CREATE INDEX IF NOT EXISTS pc_peripherals_pc_id_idx ON public.pc_peripherals(pc_id);
 CREATE INDEX IF NOT EXISTS pc_peripherals_peripheral_id_idx ON public.pc_peripherals(peripheral_id);
 CREATE INDEX IF NOT EXISTS tariffs_club_id_idx ON public.tariffs(club_id);
+CREATE INDEX IF NOT EXISTS club_photos_club_id_idx ON public.club_photos(club_id);
 
 COMMIT;
 

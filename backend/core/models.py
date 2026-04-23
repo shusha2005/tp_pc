@@ -35,6 +35,16 @@ class Club(models.Model):
         managed = False
 
 
+class ClubPhoto(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="photos")
+    url = models.TextField()
+
+    class Meta:
+        db_table = "club_photos"
+        managed = False
+
+
 class Admin(models.Model):
     id = models.BigAutoField(primary_key=True)
     email = models.TextField(unique=True)

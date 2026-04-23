@@ -4,8 +4,9 @@ from .models import Admin
 
 
 class IsAdminPrincipal(permissions.BasePermission):
-    message = "Требуются права администратора клуба."
+    """
+    Custom permission to only allow access to admin users.
+    """
 
     def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        return isinstance(user, Admin) and bool(getattr(user, "is_authenticated", False))
+        return isinstance(request.user, Admin)

@@ -6,23 +6,22 @@ const slotsForm = document.getElementById("slotsForm");
 const clubsListEl = document.getElementById("clubsList");
 const pcsListEl = document.getElementById("pcsList");
 const slotsListEl = document.getElementById("slotsList");
-const btnLoadClubs = document.getElementById("btnLoadClubs");
 const clubsFilterForm = document.getElementById("clubsFilterForm");
 const pcsFilterForm = document.getElementById("pcsFilterForm");
 const btnClubsReset = document.getElementById("btnClubsReset");
 const btnPcsReset = document.getElementById("btnPcsReset");
-const btnClubsPrev = document.getElementById("btnClubsPrev");
-const btnClubsNext = document.getElementById("btnClubsNext");
-const clubsPageInfo = document.getElementById("clubsPageInfo");
-const btnPcsPrev = document.getElementById("btnPcsPrev");
-const btnPcsNext = document.getElementById("btnPcsNext");
-const pcsPageInfo = document.getElementById("pcsPageInfo");
 const perTypeSelect = document.getElementById("perTypeSelect");
 const perBrandSelect = document.getElementById("perBrandSelect");
 const perModelSelect = document.getElementById("perModelSelect");
+const gpuSelect = document.getElementById("gpuSelect");
+const processorSelect = document.getElementById("processorSelect");
+const ramSelect = document.getElementById("ramSelect");
+const storageTypeSelect = document.getElementById("storageTypeSelect");
 const adminPanel = document.getElementById("adminPanel");
 const btnAdminLoad = document.getElementById("btnAdminLoad");
 const adminClubForm = document.getElementById("adminClubForm");
+const adminClubPhotoForm = document.getElementById("adminClubPhotoForm");
+const adminClubPhotosListEl = document.getElementById("adminClubPhotosList");
 const btnAdminSaveClub = document.getElementById("btnAdminSaveClub");
 const adminPcCreateForm = document.getElementById("adminPcCreateForm");
 const adminPcsListEl = document.getElementById("adminPcsList");
@@ -34,14 +33,27 @@ const adminTariffsListEl = document.getElementById("adminTariffsList");
 const btnAdminTariffsPrev = document.getElementById("btnAdminTariffsPrev");
 const btnAdminTariffsNext = document.getElementById("btnAdminTariffsNext");
 const adminTariffsPageInfo = document.getElementById("adminTariffsPageInfo");
+const adminPeripheralCreateForm = document.getElementById("adminPeripheralCreateForm");
+const adminPeripheralsListEl = document.getElementById("adminPeripheralsList");
+const adminPcPeripheralForm = document.getElementById("adminPcPeripheralForm");
+const adminPcPeripheralsListEl = document.getElementById("adminPcPeripheralsList");
+const adminPcPeripheralPcSelect = document.getElementById("adminPcPeripheralPcSelect");
+const adminPcPeripheralSelect = document.getElementById("adminPcPeripheralSelect");
 const btnMe = document.getElementById("btnMe");
 const btnLogout = document.getElementById("btnLogout");
 let selectedClubId = null;
 let selectedPcId = null;
-let clubsPage = 1;
-let pcsPage = 1;
 let adminPcsPage = 1;
 let adminTariffsPage = 1;
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл изображения."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function setOut(value) {
   outEl.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -127,6 +139,24 @@ function buildQuery(params) {
   return qs ? `?${qs}` : "";
 }
 
+function normalizeItems(data) {
+  return parsePaginated(data).results;
+}
+
+async function fetchAllPages(path, params, { auth = false, pageSize = 100 } = {}) {
+  let page = 1;
+  let out = [];
+  while (true) {
+    const query = buildQuery({ ...params, page, page_size: pageSize });
+    const data = await api(`${path}${query}`, { auth });
+    const pag = parsePaginated(data);
+    out = out.concat(pag.results || []);
+    if (!pag.isPaginated || !pag.next) break;
+    page += 1;
+  }
+  return out;
+}
+
 function fillSelect(selectEl, values, emptyLabel) {
   if (!selectEl) return;
   const cur = selectEl.value;
@@ -166,32 +196,37 @@ async function loadClubs() {
     price_gte: fd ? fd.get("price_gte") : "",
     price_lte: fd ? fd.get("price_lte") : "",
     has_photo: fd ? fd.get("has_photo") : "",
-    order: fd ? fd.get("order") : "name",
-    page: clubsPage,
-    page_size: fd ? fd.get("page_size") : 10,
+    order: "name",
   };
-  const clubs = await api(`/clubs/${buildQuery(params)}`, { auth: true });
-  const pag = parsePaginated(clubs);
+  const clubs = await fetchAllPages("/clubs/", params, { auth: true });
   renderList(
     clubsListEl,
-    pag.results,
-    (club) => `
+    clubs,
+    (club) => {
+      const photos = Array.isArray(club.photos) ? club.photos : [];
+      const photoLinks = photos.length
+        ? photos.slice(0, 3).map((u) => `<a href="${u}" target="_blank" rel="noreferrer">фото</a>`).join(", ")
+        : (club.photo_url ? `<a href="${club.photo_url}" target="_blank" rel="noreferrer">ссылка</a>` : "нет");
+      return `
       <div><strong>${club.name}</strong> (${club.address})</div>
-      <div>Цена: ${club.price} | Телефон: ${club.phone || "-"}</div>
-      <div>Фото: ${club.photo_url ? `<a href="${club.photo_url}" target="_blank" rel="noreferrer">ссылка</a>` : "нет"}</div>
+      ${club.description ? `<div class="muted">${club.description}</div>` : ""}
+      <div>Цена: ${club.price} руб/час | Телефон: ${club.phone || "-"}</div>
+      <div>Фото: ${photoLinks}</div>
       <div class="row">
         <button type="button" data-club-id="${club.id}" class="secondary">Выбрать клуб</button>
       </div>
     `
+    }
   );
-  if (clubsPageInfo) clubsPageInfo.textContent = `стр. ${clubsPage}`;
-  if (btnClubsPrev) btnClubsPrev.disabled = clubsPage <= 1;
-  if (btnClubsNext) btnClubsNext.disabled = !pag.next;
 }
 
 async function loadPcFilters(clubId) {
   if (!clubId) return;
   const data = await api(`/pcs/filters/?club_id=${clubId}`, { auth: true });
+  fillSelect(gpuSelect, data.gpus, "любой");
+  fillSelect(processorSelect, data.processors, "любой");
+  fillSelect(ramSelect, data.rams, "любая");
+  fillSelect(storageTypeSelect, data.storage_types, "любой");
   fillSelect(perTypeSelect, data.peripheral_types, "любой");
   fillSelect(perBrandSelect, data.peripheral_brands, "любой");
   fillSelect(perModelSelect, data.peripheral_models, "любая");
@@ -211,27 +246,27 @@ async function loadPcs(clubId) {
     peripheral_type: fd ? fd.get("peripheral_type") : "",
     peripheral_brand: fd ? fd.get("peripheral_brand") : "",
     peripheral_model: fd ? fd.get("peripheral_model") : "",
-    order: fd ? fd.get("order") : "number",
-    page: pcsPage,
-    page_size: fd ? fd.get("page_size") : 10,
+    order: "number",
   };
-  const pcs = await api(`/pcs/${buildQuery(params)}`, { auth: true });
-  const pag = parsePaginated(pcs);
+  const pcs = await fetchAllPages("/pcs/", params, { auth: true });
   renderList(
     pcsListEl,
-    pag.results,
-    (pc) => `
+    pcs,
+    (pc) => {
+      const peripherals = pc.peripherals && pc.peripherals.length > 0
+        ? pc.peripherals.map(p => `${p.peripheral.brand} ${p.peripheral.model} (${p.peripheral.type})`).join(", ")
+        : "нет";
+      return `
       <div><strong>ПК #${pc.number}</strong> (${pc.status})</div>
       <div>CPU: ${pc.processor || "-"} | GPU: ${pc.gpu || "-"} | RAM: ${pc.ram || "-"}</div>
       <div>Накопитель: ${pc.storage_type || "-"} | Монитор: ${pc.monitor_model || "-"}</div>
+      <div>Периферия: ${peripherals}</div>
       <div class="row">
         <button type="button" data-pc-id="${pc.id}" class="secondary">Выбрать ПК</button>
       </div>
     `
+    }
   );
-  if (pcsPageInfo) pcsPageInfo.textContent = `стр. ${pcsPage}`;
-  if (btnPcsPrev) btnPcsPrev.disabled = pcsPage <= 1;
-  if (btnPcsNext) btnPcsNext.disabled = !pag.next;
 }
 
 async function loadSlots() {
@@ -279,20 +314,9 @@ async function createBooking(startTime, endTime) {
   setOut({ booking_created: true, booking });
 }
 
-btnLoadClubs?.addEventListener("click", async () => {
-  try {
-    clubsPage = 1;
-    await loadClubs();
-    setOut({ clubs_loaded: true });
-  } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
 clubsFilterForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
-    clubsPage = 1;
     await loadClubs();
   } catch (err) {
     setOut({ error: true, ...err });
@@ -302,30 +326,9 @@ clubsFilterForm?.addEventListener("submit", async (e) => {
 btnClubsReset?.addEventListener("click", async () => {
   if (!clubsFilterForm) return;
   clubsFilterForm.reset();
-  clubsPage = 1;
   try {
     await loadClubs();
   } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
-btnClubsPrev?.addEventListener("click", async () => {
-  if (clubsPage <= 1) return;
-  clubsPage -= 1;
-  try {
-    await loadClubs();
-  } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
-btnClubsNext?.addEventListener("click", async () => {
-  clubsPage += 1;
-  try {
-    await loadClubs();
-  } catch (err) {
-    clubsPage -= 1;
     setOut({ error: true, ...err });
   }
 });
@@ -337,7 +340,7 @@ clubsListEl?.addEventListener("click", async (e) => {
   selectedPcId = null;
   slotsListEl.innerHTML = "";
   try {
-    pcsPage = 1;
+    pcsFilterForm?.reset();
     await loadPcFilters(selectedClubId);
     await loadPcs(selectedClubId);
     setOut({ club_selected: selectedClubId });
@@ -381,7 +384,6 @@ pcsFilterForm?.addEventListener("submit", async (e) => {
     return;
   }
   try {
-    pcsPage = 1;
     await loadPcs(selectedClubId);
   } catch (err) {
     setOut({ error: true, ...err });
@@ -392,32 +394,10 @@ btnPcsReset?.addEventListener("click", async () => {
   if (!pcsFilterForm) return;
   pcsFilterForm.reset();
   if (!selectedClubId) return;
-  pcsPage = 1;
   try {
     await loadPcFilters(selectedClubId);
     await loadPcs(selectedClubId);
   } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
-btnPcsPrev?.addEventListener("click", async () => {
-  if (!selectedClubId || pcsPage <= 1) return;
-  pcsPage -= 1;
-  try {
-    await loadPcs(selectedClubId);
-  } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
-btnPcsNext?.addEventListener("click", async () => {
-  if (!selectedClubId) return;
-  pcsPage += 1;
-  try {
-    await loadPcs(selectedClubId);
-  } catch (err) {
-    pcsPage -= 1;
     setOut({ error: true, ...err });
   }
 });
@@ -459,6 +439,40 @@ async function adminSaveClub() {
   setOut({ club_saved: true, club });
 }
 
+async function adminLoadClubPhotos() {
+  const photos = await adminApi("club-photos/");
+  const items = Array.isArray(photos) ? photos : parsePaginated(photos).results;
+  renderList(
+    adminClubPhotosListEl,
+    items,
+    (p) => `
+      <div><strong>Фото #${p.id}</strong></div>
+      <div><a href="${p.url}" target="_blank" rel="noreferrer">${p.url}</a></div>
+      <div class="row">
+        <button type="button" class="secondary" data-club-photo-id="${p.id}" data-action="delete-club-photo">Удалить</button>
+      </div>
+    `
+  );
+}
+
+async function adminCreateClubPhoto() {
+  if (!adminClubPhotoForm) return;
+  const fd = new FormData(adminClubPhotoForm);
+  const file = fd.get("file");
+  let url = String(fd.get("url") || "").trim();
+  if (!url && file && typeof file === "object" && file.size > 0) {
+    url = await fileToDataUrl(file);
+  }
+  if (!url) {
+    setOut({ error: true, message: "Укажите URL фото или выберите файл." });
+    return;
+  }
+  const photo = await adminApi("club-photos/", { method: "POST", body: { url } });
+  setOut({ club_photo_created: true, photo });
+  adminClubPhotoForm.reset();
+  await adminLoadClubPhotos();
+}
+
 async function adminLoadPcs() {
   const data = await adminApi(`pcs/${buildQuery({ page: adminPcsPage, page_size: 10, order: "number" })}`);
   const pag = parsePaginated(data);
@@ -469,6 +483,10 @@ async function adminLoadPcs() {
       <div><strong>ПК #${pc.number}</strong> (${pc.status})</div>
       <div>CPU: ${pc.processor || "-"} | GPU: ${pc.gpu || "-"} | RAM: ${pc.ram || "-"}</div>
       <div>Накопитель: ${pc.storage_type || "-"} | Монитор: ${pc.monitor_model || "-"}</div>
+      <div class="row">
+        <button type="button" class="secondary" data-admin-pc-edit="${pc.id}">Редактировать</button>
+        <button type="button" class="danger" data-admin-pc-delete="${pc.id}">Удалить</button>
+      </div>
     `
   );
   if (adminPcsPageInfo) adminPcsPageInfo.textContent = `стр. ${adminPcsPage}`;
@@ -504,6 +522,10 @@ async function adminLoadTariffs() {
       <div><strong>Тариф #${t.id}</strong></div>
       <div>День: ${t.day_of_week === null ? "любой" : t.day_of_week} | ${t.time_from || "—"} - ${t.time_to || "—"}</div>
       <div>Цена/час: ${t.price_per_hour}</div>
+      <div class="row">
+        <button type="button" class="secondary" data-admin-tariff-edit="${t.id}">Редактировать</button>
+        <button type="button" class="danger" data-admin-tariff-delete="${t.id}">Удалить</button>
+      </div>
     `
   );
   if (adminTariffsPageInfo) adminTariffsPageInfo.textContent = `стр. ${adminTariffsPage}`;
@@ -531,6 +553,25 @@ async function adminCreateTariff(e) {
   await adminLoadTariffs();
 }
 
+async function adminLoadPeripherals() {
+  const data = await adminApi("peripherals/", { auth: true });
+  const pag = parsePaginated(data);
+  renderList(
+    adminPeripheralsListEl,
+    pag.results,
+    (peripheral) => `
+      <div><strong>${peripheral.brand || "-"} ${peripheral.model || "-"}</strong></div>
+      <div>Тип: ${peripheral.type}</div>
+      <div>${peripheral.description || ""}</div>
+      <div class="row">
+        <button type="button" class="secondary" data-admin-peripheral-edit="${peripheral.id}">Редактировать</button>
+        <button type="button" class="danger" data-admin-peripheral-delete="${peripheral.id}">Удалить</button>
+      </div>
+    `
+  );
+  return pag.results;
+}
+
 async function refreshUi() {
   const principal = getPrincipal();
   const authed = Boolean(getAccessToken());
@@ -545,6 +586,9 @@ btnAdminLoad?.addEventListener("click", async () => {
     adminTariffsPage = 1;
     await adminLoadPcs();
     await adminLoadTariffs();
+    await adminLoadClubPhotos();
+    await refreshPeripheralSelects();
+    await loadAdminPcPeripherals();
     setOut({ admin_loaded: true });
   } catch (err) {
     setOut({ error: true, ...err });
@@ -559,11 +603,77 @@ btnAdminSaveClub?.addEventListener("click", async () => {
   }
 });
 
+adminClubPhotoForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await adminCreateClubPhoto();
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+});
+
+adminClubPhotosListEl?.addEventListener("click", async (e) => {
+  const button = e.target.closest("button[data-club-photo-id][data-action='delete-club-photo']");
+  if (!button) return;
+  const id = Number(button.dataset.clubPhotoId);
+  if (!id) return;
+  if (!confirm("Удалить фото клуба?")) return;
+  try {
+    await adminApi(`club-photos/${id}/`, { method: "DELETE" });
+    await adminLoadClubPhotos();
+    setOut({ club_photo_deleted: true, id });
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+});
+
 adminPcCreateForm?.addEventListener("submit", async (e) => {
   try {
     await adminCreatePc(e);
   } catch (err) {
     setOut({ error: true, ...err });
+  }
+});
+
+adminPcsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("button[data-admin-pc-edit]");
+  const deleteBtn = e.target.closest("button[data-admin-pc-delete]");
+
+  if (editBtn) {
+    const id = Number(editBtn.dataset.adminPcEdit);
+    try {
+      const current = await adminApi(`pcs/${id}/`);
+      const payload = {
+        number: Number(prompt("Номер ПК", String(current.number)) || current.number),
+        processor: prompt("CPU", current.processor || "") || null,
+        gpu: prompt("GPU", current.gpu || "") || null,
+        ram: prompt("RAM", current.ram || "") || null,
+        storage_type: prompt("Накопитель (SSD/HDD/SSD+HDD/NVMe)", current.storage_type || "") || null,
+        monitor_model: prompt("Монитор", current.monitor_model || "") || null,
+        status: prompt("Статус (active/inactive/maintenance)", current.status || "active") || current.status,
+      };
+      await adminApi(`pcs/${id}/`, { method: "PATCH", body: payload });
+      await adminLoadPcs();
+      await refreshPeripheralSelects();
+      setOut({ pc_updated: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+    return;
+  }
+
+  if (deleteBtn) {
+    const id = Number(deleteBtn.dataset.adminPcDelete);
+    if (!confirm("Удалить ПК? Связанная периферия будет отвязана.")) return;
+    try {
+      await adminApi(`pcs/${id}/`, { method: "DELETE" });
+      await adminLoadPcs();
+      await refreshPeripheralSelects();
+      await loadAdminPcPeripherals();
+      setOut({ pc_deleted: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
   }
 });
 
@@ -615,6 +725,195 @@ btnAdminTariffsNext?.addEventListener("click", async () => {
   }
 });
 
+adminTariffsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("button[data-admin-tariff-edit]");
+  const deleteBtn = e.target.closest("button[data-admin-tariff-delete]");
+
+  if (editBtn) {
+    const id = Number(editBtn.dataset.adminTariffEdit);
+    try {
+      const current = await adminApi(`tariffs/${id}/`);
+      const dayRaw = prompt("День недели (0-6 или пусто)", current.day_of_week === null ? "" : String(current.day_of_week));
+      const payload = {
+        day_of_week: dayRaw === "" ? null : Number(dayRaw),
+        time_from: prompt("Время начала HH:MM (или пусто)", current.time_from || "") || null,
+        time_to: prompt("Время конца HH:MM (или пусто)", current.time_to || "") || null,
+        price_per_hour: prompt("Цена за час", String(current.price_per_hour)) || String(current.price_per_hour),
+      };
+      await adminApi(`tariffs/${id}/`, { method: "PATCH", body: payload });
+      await adminLoadTariffs();
+      setOut({ tariff_updated: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+    return;
+  }
+
+  if (deleteBtn) {
+    const id = Number(deleteBtn.dataset.adminTariffDelete);
+    if (!confirm("Удалить тариф?")) return;
+    try {
+      await adminApi(`tariffs/${id}/`, { method: "DELETE" });
+      await adminLoadTariffs();
+      setOut({ tariff_deleted: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+  }
+});
+
+adminPeripheralCreateForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(adminPeripheralCreateForm);
+  const payload = {
+    type: String(fd.get("type") || "").trim(),
+    brand: String(fd.get("brand") || "").trim() || null,
+    model: String(fd.get("model") || "").trim(),
+    description: String(fd.get("description") || "").trim() || null,
+  };
+  try {
+    const peripheral = await adminApi("peripherals/", { method: "POST", body: payload });
+    setOut({ peripheral_created: true, peripheral });
+    adminPeripheralCreateForm.reset();
+    await refreshPeripheralSelects();
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+});
+
+adminPeripheralsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("button[data-admin-peripheral-edit]");
+  const deleteBtn = e.target.closest("button[data-admin-peripheral-delete]");
+
+  if (editBtn) {
+    const id = Number(editBtn.dataset.adminPeripheralEdit);
+    try {
+      const current = await adminApi(`peripherals/${id}/`);
+      const payload = {
+        type: prompt("Тип (mouse/keyboard/headset/monitor/mousepad)", current.type || "mouse") || current.type,
+        brand: prompt("Бренд", current.brand || "") || null,
+        model: prompt("Модель", current.model || "") || current.model,
+        description: prompt("Описание", current.description || "") || null,
+      };
+      await adminApi(`peripherals/${id}/`, { method: "PATCH", body: payload });
+      await refreshPeripheralSelects();
+      setOut({ peripheral_updated: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+    return;
+  }
+
+  if (deleteBtn) {
+    const id = Number(deleteBtn.dataset.adminPeripheralDelete);
+    if (!confirm("Удалить периферию?")) return;
+    try {
+      await adminApi(`peripherals/${id}/`, { method: "DELETE" });
+      await refreshPeripheralSelects();
+      await loadAdminPcPeripherals();
+      setOut({ peripheral_deleted: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+  }
+});
+
+adminPcPeripheralForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(adminPcPeripheralForm);
+  const payload = {
+    pc_id: Number(fd.get("pc_id")),
+    peripheral_id: Number(fd.get("peripheral_id")),
+    quantity: Number(fd.get("quantity") || 1),
+  };
+  try {
+    const pcPeri = await adminApi("pc-peripherals/", { method: "POST", body: payload });
+    setOut({ pc_peripheral_linked: true, pcPeri });
+    adminPcPeripheralForm.reset();
+    await loadAdminPcPeripherals();
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+});
+
+async function refreshPeripheralSelects() {
+  try {
+    const peripherals = await adminLoadPeripherals();
+    fillSelect(adminPcPeripheralSelect, peripherals.map(p => `${p.id}`), "—");
+    const opts = adminPcPeripheralSelect.querySelectorAll("option");
+    peripherals.forEach((p, i) => {
+      if (opts[i + 1]) opts[i + 1].textContent = `${p.brand} ${p.model} (${p.type})`;
+    });
+    
+    // Also populate PC select
+    const pcsData = await adminApi(`pcs/`);
+    const pcList = parsePaginated(pcsData).results;
+    fillSelect(adminPcPeripheralPcSelect, pcList.map(p => `${p.id}`), "—");
+    const pcOpts = adminPcPeripheralPcSelect.querySelectorAll("option");
+    pcList.forEach((p, i) => {
+      if (pcOpts[i + 1]) pcOpts[i + 1].textContent = `ПК #${p.number}`;
+    });
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+}
+
+async function loadAdminPcPeripherals() {
+  try {
+    const data = await adminApi("pc-peripherals/", { auth: true });
+    const pag = parsePaginated(data);
+    renderList(
+      adminPcPeripheralsListEl,
+      pag.results,
+      (pp) => `
+        <div><strong>ПК #${pp.pc?.number || "?"}</strong> → ${pp.peripheral?.brand || "-"} ${pp.peripheral?.model || "-"}</div>
+        <div>Тип: ${pp.peripheral?.type || "-"} | Кол-во: ${pp.quantity}</div>
+        <div class="row">
+          <button type="button" class="secondary" data-admin-pc-peripheral-edit="${pp.id}">Изменить кол-во</button>
+          <button type="button" class="danger" data-admin-pc-peripheral-delete="${pp.id}">Удалить</button>
+        </div>
+      `
+    );
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+}
+
+adminPcPeripheralsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("button[data-admin-pc-peripheral-edit]");
+  const deleteBtn = e.target.closest("button[data-admin-pc-peripheral-delete]");
+
+  if (editBtn) {
+    const id = Number(editBtn.dataset.adminPcPeripheralEdit);
+    const qtyRaw = prompt("Новое количество", "1");
+    const quantity = Number(qtyRaw);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      setOut({ error: true, message: "Количество должно быть >= 1." });
+      return;
+    }
+    try {
+      await adminApi(`pc-peripherals/${id}/`, { method: "PATCH", body: { quantity } });
+      await loadAdminPcPeripherals();
+      setOut({ pc_peripheral_updated: true, id, quantity });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+    return;
+  }
+
+  if (deleteBtn) {
+    const id = Number(deleteBtn.dataset.adminPcPeripheralDelete);
+    if (!confirm("Удалить привязку периферии к ПК?")) return;
+    try {
+      await adminApi(`pc-peripherals/${id}/`, { method: "DELETE" });
+      await loadAdminPcPeripherals();
+      setOut({ pc_peripheral_deleted: true, id });
+    } catch (err) {
+      setOut({ error: true, ...err });
+    }
+  }
+});
+
 btnMe?.addEventListener("click", async () => {
   try {
     const principal = getPrincipal();
@@ -629,8 +928,6 @@ btnLogout?.addEventListener("click", () => {
   clearTokens();
   selectedClubId = null;
   selectedPcId = null;
-  clubsPage = 1;
-  pcsPage = 1;
   adminPcsPage = 1;
   adminTariffsPage = 1;
   clubsListEl.innerHTML = "";
@@ -649,5 +946,8 @@ if (!getAccessToken()) {
 } else {
   setOut("Токен найден. Можно работать в кабинете.");
   refreshUi();
+  if (getPrincipal() !== "admin") {
+    loadClubs().catch((err) => setOut({ error: true, ...err }));
+  }
 }
 

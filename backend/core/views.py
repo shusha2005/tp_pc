@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .auth import issue_tokens
-from .models import Booking, Club, Pc, PcPeripheral, Tariff
+from .models import Booking, Club, ClubPhoto, Pc, PcPeripheral, Peripheral, Tariff
 from .permissions import IsAdminPrincipal
 from .serializers import (
     AdminLoginSerializer,
@@ -25,6 +25,9 @@ from .serializers import (
     RegisterSerializer,
     TariffSerializer,
     TokenPairSerializer,
+    PeripheralSerializer,
+    PcPeripheralManageSerializer,
+    ClubPhotoSerializer,
 )
 
 
@@ -52,7 +55,10 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
 
         has_photo = (self.request.query_params.get("has_photo") or "").strip().lower()
         if has_photo in {"1", "true", "yes"}:
-            qs = qs.exclude(photo_url__isnull=True).exclude(photo_url__exact="")
+            qs = qs.filter(
+                Q(photo_url__isnull=False) & ~Q(photo_url__exact="")
+                | Q(photos__url__isnull=False) & ~Q(photos__url__exact="")
+            ).distinct()
 
         order = (self.request.query_params.get("order") or "").strip()
         allowed = {"price": "price", "name": "name", "id": "id"}
@@ -145,6 +151,10 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         """
         base = self.get_queryset()
         pc_ids = list(base.values_list("id", flat=True))
+        gpus = sorted({v for v in base.values_list("gpu", flat=True) if v})
+        processors = sorted({v for v in base.values_list("processor", flat=True) if v})
+        rams = sorted({v for v in base.values_list("ram", flat=True) if v})
+        storage_types = sorted({v for v in base.values_list("storage_type", flat=True) if v})
         per_qs = (
             PcPeripheral.objects.filter(pc_id__in=pc_ids)
             .select_related("peripheral")
@@ -156,6 +166,10 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         models = sorted({row["peripheral__model"] for row in per_qs if row["peripheral__model"]})
         return Response(
             {
+                "gpus": gpus,
+                "processors": processors,
+                "rams": rams,
+                "storage_types": storage_types,
                 "peripheral_types": types,
                 "peripheral_brands": brands,
                 "peripheral_models": models,
@@ -349,6 +363,17 @@ class AdminClubViewSet(viewsets.ModelViewSet):
         return Club.objects.filter(id=self.request.user.club_id).order_by("id")
 
 
+class AdminClubPhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = ClubPhotoSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        return ClubPhoto.objects.filter(club_id=self.request.user.club_id).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
+
+
 class AdminPcViewSet(viewsets.ModelViewSet):
     serializer_class = PcManageSerializer
     permission_classes = [IsAdminPrincipal]
@@ -375,3 +400,45 @@ class AdminTariffViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(club_id=self.request.user.club_id)
+
+
+class AdminPeripheralViewSet(viewsets.ModelViewSet):
+    serializer_class = PeripheralSerializer
+    permission_classes = [IsAdminPrincipal]
+    pagination_class = None
+
+    def get_queryset(self):
+        # Get all peripherals that are used by PCs in this admin's club
+        return Peripheral.objects.filter(
+            pcperipheral__pc__club_id=self.request.user.club_id
+        ).distinct().order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class AdminPcPeripheralViewSet(viewsets.ModelViewSet):
+    serializer_class = PcPeripheralManageSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        # Get all PC peripherals where the PC belongs to this admin's club
+        return PcPeripheral.objects.filter(
+            pc__club_id=self.request.user.club_id
+        ).select_related("pc", "peripheral").order_by("id")
+
+    def perform_create(self, serializer):
+        pc_id = serializer.validated_data.get("pc_id")
+        if pc_id is None:
+            raise ValidationError({"pc_id": ["Поле pc_id обязательно."]})
+        pc = Pc.objects.filter(id=pc_id, club_id=self.request.user.club_id).first()
+        if not pc:
+            raise ValidationError({"pc_id": ["Этот ПК не принадлежит вашему клубу или не найден."]})
+        serializer.save()
+
+    def perform_update(self, serializer):
+        pc_id = serializer.validated_data.get("pc_id", serializer.instance.pc_id)
+        pc = Pc.objects.filter(id=pc_id, club_id=self.request.user.club_id).first()
+        if not pc:
+            raise ValidationError({"pc_id": ["Этот ПК не принадлежит вашему клубу или не найден."]})
+        serializer.save()

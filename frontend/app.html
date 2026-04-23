@@ -45,35 +45,11 @@
                 <option value="1">только с фото</option>
               </select>
             </label>
-            <label class="field">
-              <span>Сортировка</span>
-              <select name="order">
-                <option value="name">по имени</option>
-                <option value="-name">по имени (убыв.)</option>
-                <option value="price">по цене</option>
-                <option value="-price">по цене (убыв.)</option>
-                <option value="id">по id</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>На странице</span>
-              <select name="page_size">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-              </select>
-            </label>
             <div class="row">
               <button type="submit">Применить</button>
               <button type="button" class="secondary" id="btnClubsReset">Сброс</button>
             </div>
           </form>
-          <div class="row">
-            <button type="button" class="secondary" id="btnLoadClubs">Загрузить</button>
-            <button type="button" class="secondary" id="btnClubsPrev">←</button>
-            <span class="muted" id="clubsPageInfo">стр. 1</span>
-            <button type="button" class="secondary" id="btnClubsNext">→</button>
-          </div>
           <div id="clubsList" class="list"></div>
         </section>
 
@@ -96,23 +72,26 @@
             </label>
             <label class="field">
               <span>GPU</span>
-              <input name="gpu" type="text" placeholder="RTX 4070" />
+              <select name="gpu" id="gpuSelect">
+                <option value="">любой</option>
+              </select>
             </label>
             <label class="field">
               <span>CPU</span>
-              <input name="processor" type="text" placeholder="Ryzen" />
+              <select name="processor" id="processorSelect">
+                <option value="">любой</option>
+              </select>
             </label>
             <label class="field">
               <span>RAM</span>
-              <input name="ram" type="text" placeholder="32" />
+              <select name="ram" id="ramSelect">
+                <option value="">любая</option>
+              </select>
             </label>
             <label class="field">
               <span>Накопитель</span>
-              <select name="storage_type">
+              <select name="storage_type" id="storageTypeSelect">
                 <option value="">любой</option>
-                <option value="SSD">SSD</option>
-                <option value="HDD">HDD</option>
-                <option value="SSD+HDD">SSD+HDD</option>
               </select>
             </label>
             <label class="field">
@@ -133,32 +112,11 @@
                 <option value="">любая</option>
               </select>
             </label>
-            <label class="field">
-              <span>Сортировка</span>
-              <select name="order">
-                <option value="number">по номеру</option>
-                <option value="-number">по номеру (убыв.)</option>
-                <option value="id">по id</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>На странице</span>
-              <select name="page_size">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-              </select>
-            </label>
             <div class="row">
               <button type="submit">Применить</button>
               <button type="button" class="secondary" id="btnPcsReset">Сброс</button>
             </div>
           </form>
-          <div class="row">
-            <button type="button" class="secondary" id="btnPcsPrev">←</button>
-            <span class="muted" id="pcsPageInfo">стр. 1</span>
-            <button type="button" class="secondary" id="btnPcsNext">→</button>
-          </div>
           <div id="pcsList" class="list"></div>
         </section>
 
@@ -206,6 +164,14 @@
             <button type="button" id="btnAdminSaveClub">Сохранить клуб</button>
           </div>
         </form>
+        <form id="adminClubPhotoForm" class="form inline">
+          <label class="field"><span>Фото URL</span><input name="url" type="url" placeholder="https://..." /></label>
+          <label class="field"><span>Или файл</span><input name="file" type="file" accept="image/*" /></label>
+          <div class="row">
+            <button type="submit">Добавить фото</button>
+          </div>
+        </form>
+        <div id="adminClubPhotosList" class="list"></div>
 
         <h3>ПК</h3>
         <form id="adminPcCreateForm" class="form inline">
@@ -270,6 +236,49 @@
           <button type="button" class="secondary" id="btnAdminTariffsNext">→</button>
         </div>
         <div id="adminTariffsList" class="list"></div>
+
+        <h3>Периферия</h3>
+        <form id="adminPeripheralCreateForm" class="form inline">
+          <label class="field">
+            <span>Тип</span>
+            <select name="type" required>
+              <option value="">—</option>
+              <option value="mouse">Мышь</option>
+              <option value="keyboard">Клавиатура</option>
+              <option value="headset">Гарнитура</option>
+              <option value="monitor">Монитор</option>
+              <option value="mousepad">Коврик</option>
+            </select>
+          </label>
+          <label class="field"><span>Бренд</span><input name="brand" type="text" /></label>
+          <label class="field"><span>Модель</span><input name="model" type="text" required /></label>
+          <label class="field"><span>Описание</span><input name="description" type="text" /></label>
+          <div class="row">
+            <button type="submit">Добавить периферию</button>
+          </div>
+        </form>
+        <div id="adminPeripheralsList" class="list"></div>
+
+        <h3>Привязка периферии к ПК</h3>
+        <form id="adminPcPeripheralForm" class="form inline">
+          <label class="field">
+            <span>ПК</span>
+            <select name="pc_id" id="adminPcPeripheralPcSelect" required>
+              <option value="">—</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Периферия</span>
+            <select name="peripheral_id" id="adminPcPeripheralSelect" required>
+              <option value="">—</option>
+            </select>
+          </label>
+          <label class="field"><span>Кол-во</span><input name="quantity" type="number" min="1" value="1" required /></label>
+          <div class="row">
+            <button type="submit">Добавить привязку</button>
+          </div>
+        </form>
+        <div id="adminPcPeripheralsList" class="list"></div>
       </section>
 
       <section class="card">
