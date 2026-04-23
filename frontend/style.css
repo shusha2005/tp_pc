@@ -46,6 +46,10 @@ h2 {
   margin: 0 0 12px;
 }
 
+h3 {
+  margin: 16px 0 8px;
+}
+
 .form {
   display: grid;
   gap: 12px;
@@ -109,6 +113,11 @@ button.secondary {
 button.danger {
   border-color: rgba(255, 107, 107, 0.5);
   background: rgba(255, 107, 107, 0.12);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .out {
