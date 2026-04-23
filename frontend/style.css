@@ -110,6 +110,25 @@ button.secondary {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Link that looks like a button */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: 1px solid rgba(110, 168, 254, 0.5);
+  background: rgba(110, 168, 254, 0.14);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+a.btn.secondary {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 button.danger {
   border-color: rgba(255, 107, 107, 0.5);
   background: rgba(255, 107, 107, 0.12);

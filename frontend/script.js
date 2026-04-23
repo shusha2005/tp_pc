@@ -1,7 +1,7 @@
 const API_BASE = "http://127.0.0.1:8000/api";
 
 const outEl = document.getElementById("out");
-const authForm = document.getElementById("authForm");
+const userPanel = document.getElementById("userPanel");
 const slotsForm = document.getElementById("slotsForm");
 const clubsListEl = document.getElementById("clubsList");
 const pcsListEl = document.getElementById("pcsList");
@@ -21,8 +21,6 @@ const perTypeSelect = document.getElementById("perTypeSelect");
 const perBrandSelect = document.getElementById("perBrandSelect");
 const perModelSelect = document.getElementById("perModelSelect");
 const adminPanel = document.getElementById("adminPanel");
-const adminClubField = document.getElementById("adminClubField");
-const adminClubSelect = document.getElementById("adminClubSelect");
 const btnAdminLoad = document.getElementById("btnAdminLoad");
 const adminClubForm = document.getElementById("adminClubForm");
 const btnAdminSaveClub = document.getElementById("btnAdminSaveClub");
@@ -281,58 +279,6 @@ async function createBooking(startTime, endTime) {
   setOut({ booking_created: true, booking });
 }
 
-authForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const fd = new FormData(authForm);
-  const principal = String(fd.get("principal") || "user");
-  const mode = String(fd.get("mode") || "login");
-  const password = String(fd.get("password") || "");
-
-  try {
-    let tokens;
-    if (principal === "admin") {
-      if (mode === "register") {
-        const payload = {
-          email: String(fd.get("email") || "").trim(),
-          username: String(fd.get("username") || "").trim(),
-          password,
-          club_id: Number(fd.get("club_id") || 0),
-        };
-        tokens = await api("/auth/admin-register/", { method: "POST", body: payload });
-      } else {
-        const payload = {
-          login: String(fd.get("login") || "").trim(),
-          password,
-        };
-        tokens = await api("/auth/admin-login/", { method: "POST", body: payload });
-      }
-    } else {
-      if (mode === "register") {
-        const payload = {
-          email: String(fd.get("email") || "").trim(),
-          username: String(fd.get("username") || "").trim(),
-          phone: String(fd.get("phone") || "").trim(),
-          password,
-        };
-        tokens = await api("/auth/register/", { method: "POST", body: payload });
-      } else {
-        const payload = {
-          login: String(fd.get("login") || "").trim(),
-          password,
-        };
-        tokens = await api("/auth/login/", { method: "POST", body: payload });
-      }
-    }
-    setTokens(tokens);
-    setPrincipal(principal);
-    const me = principal === "admin" ? await api("/auth/admin-me/", { auth: true }) : await api("/auth/me/", { auth: true });
-    setOut({ auth_ok: true, principal, mode, me });
-    await refreshUi();
-  } catch (err) {
-    setOut({ error: true, ...err });
-  }
-});
-
 btnLoadClubs?.addEventListener("click", async () => {
   try {
     clubsPage = 1;
@@ -589,35 +535,8 @@ async function refreshUi() {
   const principal = getPrincipal();
   const authed = Boolean(getAccessToken());
   if (adminPanel) adminPanel.style.display = authed && principal === "admin" ? "block" : "none";
+  if (userPanel) userPanel.style.display = authed && principal === "admin" ? "none" : "block";
 }
-
-async function loadAdminClubOptions() {
-  try {
-    const data = await api("/clubs/?order=name&page_size=100", { auth: true });
-    const pag = parsePaginated(data);
-    if (!adminClubSelect) return;
-    adminClubSelect.innerHTML = "";
-    pag.results.forEach((c) => {
-      const opt = document.createElement("option");
-      opt.value = String(c.id);
-      opt.textContent = `${c.name} (#${c.id})`;
-      adminClubSelect.appendChild(opt);
-    });
-  } catch (err) {
-    // ignore
-  }
-}
-
-authForm?.addEventListener("change", async () => {
-  if (!authForm) return;
-  const fd = new FormData(authForm);
-  const principal = String(fd.get("principal") || "user");
-  const mode = String(fd.get("mode") || "login");
-  if (adminClubField) adminClubField.style.display = principal === "admin" && mode === "register" ? "grid" : "none";
-  if (principal === "admin" && mode === "register") {
-    await loadAdminClubOptions();
-  }
-});
 
 btnAdminLoad?.addEventListener("click", async () => {
   try {
@@ -721,14 +640,14 @@ btnLogout?.addEventListener("click", () => {
   if (adminTariffsListEl) adminTariffsListEl.innerHTML = "";
   if (adminPanel) adminPanel.style.display = "none";
   setOut("Токены удалены из localStorage.");
+  window.location.href = "./index.html";
 });
 
-// show current state on load
-if (getAccessToken()) {
-  setOut("Токен найден в localStorage. Нажмите «Проверить /me».");
+// guard: require auth for app page
+if (!getAccessToken()) {
+  window.location.href = "./index.html";
 } else {
-  setOut("Токена нет. Зарегистрируйтесь.");
+  setOut("Токен найден. Можно работать в кабинете.");
+  refreshUi();
 }
-
-refreshUi();
 
