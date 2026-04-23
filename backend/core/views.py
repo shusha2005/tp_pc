@@ -16,7 +16,8 @@ from .serializers import (
     AdminRegisterSerializer,
     AdminMeSerializer,
     BookingSerializer,
-    ClubSerializer,
+    ClubDetailSerializer,
+    ClubListSerializer,
     ClubManageSerializer,
     LoginSerializer,
     MeSerializer,
@@ -32,7 +33,10 @@ from .serializers import (
 
 
 class ClubViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ClubSerializer
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ClubListSerializer
+        return ClubDetailSerializer
 
     def get_queryset(self):
         qs = Club.objects.all().order_by("id")
@@ -154,6 +158,7 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         gpus = sorted({v for v in base.values_list("gpu", flat=True) if v})
         processors = sorted({v for v in base.values_list("processor", flat=True) if v})
         rams = sorted({v for v in base.values_list("ram", flat=True) if v})
+        statuses = sorted({v for v in base.values_list("status", flat=True) if v})
         storage_types = sorted({v for v in base.values_list("storage_type", flat=True) if v})
         per_qs = (
             PcPeripheral.objects.filter(pc_id__in=pc_ids)
@@ -169,6 +174,7 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
                 "gpus": gpus,
                 "processors": processors,
                 "rams": rams,
+                "statuses": statuses,
                 "storage_types": storage_types,
                 "peripheral_types": types,
                 "peripheral_brands": brands,
@@ -178,9 +184,11 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    queryset = Booking.objects.all().order_by("-created_at")
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Booking.objects.filter(user_id=self.request.user.id).order_by("-created_at")
 
     def _resolve_price_per_hour(self, pc: Pc, moment):
         local_dt = timezone.localtime(moment) if timezone.is_aware(moment) else moment
@@ -216,12 +224,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         return total.quantize(Decimal("0.01"))
 
     def perform_create(self, serializer):
-        user = getattr(self.request, "user", None)
-        save_kwargs = {}
-        if user and getattr(user, "id", None) and not serializer.validated_data.get("user_id"):
-            save_kwargs["user_id"] = user.id
+        save_kwargs = {
+            "user_id": self.request.user.id,
+        }
 
-        # Расчет цены по тарифам клуба с fallback на базовую цену клуба.
         if serializer.validated_data.get("total_price") in (None, "", 0, Decimal("0")):
             pc = Pc.objects.select_related("club").get(id=serializer.validated_data["pc_id"])
             start = serializer.validated_data["start_time"]
@@ -408,10 +414,7 @@ class AdminPeripheralViewSet(viewsets.ModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        # Get all peripherals that are used by PCs in this admin's club
-        return Peripheral.objects.filter(
-            pcperipheral__pc__club_id=self.request.user.club_id
-        ).distinct().order_by("id")
+        return Peripheral.objects.all().order_by("id")
 
     def perform_create(self, serializer):
         serializer.save()

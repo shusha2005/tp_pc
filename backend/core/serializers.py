@@ -5,7 +5,13 @@ from .auth import get_admin_by_login, get_user_by_login, hash_password, verify_p
 from .models import Admin, Booking, Club, ClubPhoto, Pc, PcPeripheral, Peripheral, Tariff, User
 
 
-class ClubSerializer(serializers.ModelSerializer):
+class ClubListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ["id", "name", "address", "phone", "description", "price"]
+
+
+class ClubDetailSerializer(serializers.ModelSerializer):
     photos = serializers.SerializerMethodField()
 
     class Meta:
@@ -65,7 +71,7 @@ class PcSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
-    user_id = serializers.IntegerField(required=False)
+    user_id = serializers.IntegerField(read_only=True)
     pc_id = serializers.IntegerField()
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     status = serializers.CharField(required=False)
@@ -73,7 +79,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ["id", "start_time", "end_time", "total_price", "status", "created_at", "user_id", "pc_id"]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "user_id"]
 
     def create(self, validated_data):
         user_id = validated_data.pop("user_id", None)
@@ -86,7 +92,8 @@ class BookingSerializer(serializers.ModelSerializer):
         except IntegrityError as e:
             msg = str(e).lower()
             if "bookings_no_overlap_per_pc" in msg or "exclude" in msg:
-                raise serializers.ValidationError({"non_field_errors": ["Этот ПК уже забронирован на выбранное время."]})
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Этот ПК уже забронирован на выбранное время."]})
             raise
 
 

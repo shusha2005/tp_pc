@@ -3,7 +3,9 @@ const API_BASE = "http://127.0.0.1:8000/api";
 const outEl = document.getElementById("out");
 const userPanel = document.getElementById("userPanel");
 const slotsForm = document.getElementById("slotsForm");
+const clubSearchInput = document.getElementById("clubSearchInput");
 const clubsListEl = document.getElementById("clubsList");
+const clubQuickSelect = document.getElementById("clubQuickSelect");
 const pcsListEl = document.getElementById("pcsList");
 const slotsListEl = document.getElementById("slotsList");
 const clubsFilterForm = document.getElementById("clubsFilterForm");
@@ -13,6 +15,7 @@ const btnPcsReset = document.getElementById("btnPcsReset");
 const perTypeSelect = document.getElementById("perTypeSelect");
 const perBrandSelect = document.getElementById("perBrandSelect");
 const perModelSelect = document.getElementById("perModelSelect");
+const pcStatusSelect = document.getElementById("pcStatusSelect");
 const gpuSelect = document.getElementById("gpuSelect");
 const processorSelect = document.getElementById("processorSelect");
 const ramSelect = document.getElementById("ramSelect");
@@ -45,6 +48,24 @@ let selectedClubId = null;
 let selectedPcId = null;
 let adminPcsPage = 1;
 let adminTariffsPage = 1;
+let clubsSearchIndex = [];
+
+function fillClubQuickSelect(clubs) {
+  if (!clubQuickSelect) return;
+  clubQuickSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Выбери существующий клуб";
+  clubQuickSelect.appendChild(placeholder);
+
+  (clubs || []).forEach((club) => {
+    const option = document.createElement("option");
+    option.value = String(club.id);
+    option.textContent = `${club.name} (${club.address})`;
+    clubQuickSelect.appendChild(option);
+  });
+}
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -188,6 +209,17 @@ function renderList(target, items, renderItem) {
   });
 }
 
+async function loadClubSuggestions() {
+  ensureAuth();
+  const clubs = await fetchAllPages("/clubs/", { order: "name" }, { auth: true });
+  clubsSearchIndex = clubs.map((club) => ({
+    id: club.id,
+    name: String(club.name || "").trim(),
+    address: String(club.address || "").trim(),
+  }));
+  fillClubQuickSelect(clubsSearchIndex);
+}
+
 async function loadClubs() {
   ensureAuth();
   const fd = clubsFilterForm ? new FormData(clubsFilterForm) : null;
@@ -199,6 +231,14 @@ async function loadClubs() {
     order: "name",
   };
   const clubs = await fetchAllPages("/clubs/", params, { auth: true });
+  if (!String(params.q || "").trim() && !String(params.price_gte || "").trim() && !String(params.price_lte || "").trim() && !String(params.has_photo || "").trim()) {
+    clubsSearchIndex = clubs.map((club) => ({
+      id: club.id,
+      name: String(club.name || "").trim(),
+      address: String(club.address || "").trim(),
+    }));
+    fillClubQuickSelect(clubsSearchIndex);
+  }
   renderList(
     clubsListEl,
     clubs,
@@ -223,6 +263,7 @@ async function loadClubs() {
 async function loadPcFilters(clubId) {
   if (!clubId) return;
   const data = await api(`/pcs/filters/?club_id=${clubId}`, { auth: true });
+  fillSelect(pcStatusSelect, data.statuses, "любой");
   fillSelect(gpuSelect, data.gpus, "любой");
   fillSelect(processorSelect, data.processors, "любой");
   fillSelect(ramSelect, data.rams, "любая");
@@ -326,6 +367,19 @@ clubsFilterForm?.addEventListener("submit", async (e) => {
 btnClubsReset?.addEventListener("click", async () => {
   if (!clubsFilterForm) return;
   clubsFilterForm.reset();
+  if (clubQuickSelect) clubQuickSelect.value = "";
+  try {
+    await loadClubs();
+  } catch (err) {
+    setOut({ error: true, ...err });
+  }
+});
+
+clubQuickSelect?.addEventListener("change", async () => {
+  if (!clubSearchInput) return;
+  const selectedId = Number(clubQuickSelect.value);
+  const selectedClub = clubsSearchIndex.find((club) => club.id === selectedId);
+  clubSearchInput.value = selectedClub ? selectedClub.name : "";
   try {
     await loadClubs();
   } catch (err) {
@@ -947,6 +1001,7 @@ if (!getAccessToken()) {
   setOut("Токен найден. Можно работать в кабинете.");
   refreshUi();
   if (getPrincipal() !== "admin") {
+    loadClubSuggestions().catch((err) => setOut({ error: true, ...err }));
     loadClubs().catch((err) => setOut({ error: true, ...err }));
   }
 }
