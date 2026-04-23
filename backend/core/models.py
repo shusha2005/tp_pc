@@ -56,6 +56,14 @@ class Admin(models.Model):
         db_table = "admins"
         managed = False
 
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+
 
 class Pc(models.Model):
     id = models.BigAutoField(primary_key=True)
