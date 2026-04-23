@@ -2,7 +2,7 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from .auth import get_admin_by_login, get_user_by_login, hash_password, verify_password
-from .models import Booking, Club, Pc, PcPeripheral, Peripheral, Tariff, User
+from .models import Admin, Booking, Club, Pc, PcPeripheral, Peripheral, Tariff, User
 
 
 class ClubSerializer(serializers.ModelSerializer):
@@ -114,6 +114,23 @@ class AdminLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"non_field_errors": ["Неверный логин или пароль."]})
         attrs["admin"] = admin
         return attrs
+
+
+class AdminRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField()
+    password = serializers.CharField(min_length=6, write_only=True)
+    club_id = serializers.IntegerField()
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            admin = Admin.objects.create(
+                email=validated_data["email"],
+                username=validated_data["username"],
+                password_hash=hash_password(validated_data["password"]),
+                club_id=validated_data["club_id"],
+            )
+        return admin
 
 
 class TokenPairSerializer(serializers.Serializer):

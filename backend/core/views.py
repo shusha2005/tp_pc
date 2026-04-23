@@ -13,6 +13,7 @@ from .models import Booking, Club, Pc, PcPeripheral, Tariff
 from .permissions import IsAdminPrincipal
 from .serializers import (
     AdminLoginSerializer,
+    AdminRegisterSerializer,
     AdminMeSerializer,
     BookingSerializer,
     ClubSerializer,
@@ -44,6 +45,14 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
         price_lte = self.request.query_params.get("price_lte")
         if price_lte:
             qs = qs.filter(price__lte=price_lte)
+
+        price_gte = self.request.query_params.get("price_gte")
+        if price_gte:
+            qs = qs.filter(price__gte=price_gte)
+
+        has_photo = (self.request.query_params.get("has_photo") or "").strip().lower()
+        if has_photo in {"1", "true", "yes"}:
+            qs = qs.exclude(photo_url__isnull=True).exclude(photo_url__exact="")
 
         order = (self.request.query_params.get("order") or "").strip()
         allowed = {"price": "price", "name": "name", "id": "id"}
@@ -312,6 +321,15 @@ class AuthViewSet(viewsets.ViewSet):
         tokens = issue_tokens(admin, subject_type="admin")
         out = TokenPairSerializer({"access": tokens.access, "refresh": tokens.refresh})
         return Response(out.data)
+
+    @action(detail=False, methods=["post"], url_path="admin-register")
+    def admin_register(self, request):
+        serializer = AdminRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        admin = serializer.save()
+        tokens = issue_tokens(admin, subject_type="admin")
+        out = TokenPairSerializer({"access": tokens.access, "refresh": tokens.refresh})
+        return Response(out.data, status=201)
 
     @action(detail=False, methods=["get"], url_path="me", permission_classes=[permissions.IsAuthenticated])
     def me(self, request):

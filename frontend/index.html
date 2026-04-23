@@ -9,11 +9,18 @@
   <body>
     <main class="container">
       <h1>PC Club Booking</h1>
-      <p class="muted">Демо-клиент: авторизация, клубы, ПК, слоты, бронирование.</p>
+      <p class="muted">Страница 1: регистрация и вход.</p>
 
       <section class="card">
         <h2>Авторизация</h2>
         <form id="authForm" class="form">
+          <label class="field">
+            <span>Тип аккаунта</span>
+            <select name="principal">
+              <option value="user">Пользователь</option>
+              <option value="admin">Администратор</option>
+            </select>
+          </label>
           <label class="field">
             <span>Режим</span>
             <select name="mode">
@@ -37,53 +44,20 @@
             <span>Телефон (необязательно)</span>
             <input name="phone" type="tel" placeholder="+7..." />
           </label>
+          <label class="field" id="adminClubField" style="display: none">
+            <span>Клуб (для регистрации админа)</span>
+            <select name="club_id" id="adminClubSelect"></select>
+          </label>
           <label class="field">
             <span>Пароль</span>
             <input name="password" type="password" placeholder="min 6 символов" minlength="6" required />
           </label>
 
           <div class="row">
-            <button type="submit">Войти / Зарегистрироваться</button>
-            <button type="button" class="secondary" id="btnMe">Проверить /me</button>
-            <button type="button" class="danger" id="btnLogout">Выйти</button>
+            <button type="submit">Продолжить</button>
+            <a class="btn secondary" id="btnGoApp" href="./app.html">Открыть кабинет</a>
           </div>
         </form>
-      </section>
-
-      <section class="card">
-        <h2>Клубы</h2>
-        <div class="row">
-          <button type="button" id="btnLoadClubs">Загрузить клубы</button>
-        </div>
-        <div id="clubsList" class="list"></div>
-      </section>
-
-      <section class="card">
-        <h2>ПК</h2>
-        <p class="muted">Сначала выбери клуб, затем выбери ПК.</p>
-        <div id="pcsList" class="list"></div>
-      </section>
-
-      <section class="card">
-        <h2>Свободные слоты</h2>
-        <form id="slotsForm" class="form inline">
-          <label class="field">
-            <span>Дата</span>
-            <input name="date" type="date" required />
-          </label>
-          <label class="field">
-            <span>Длительность (мин)</span>
-            <input name="duration_minutes" type="number" min="30" step="30" value="60" required />
-          </label>
-          <label class="field">
-            <span>Шаг (мин)</span>
-            <input name="step_minutes" type="number" min="15" step="15" value="30" required />
-          </label>
-          <div class="row">
-            <button type="submit">Показать слоты</button>
-          </div>
-        </form>
-        <div id="slotsList" class="list"></div>
       </section>
 
       <section class="card">
@@ -91,7 +65,7 @@
         <pre id="out" class="out" aria-live="polite"></pre>
       </section>
     </main>
-    <script src="./script.js"></script>
+    <script src="./auth.js"></script>
   </body>
 </html>
 

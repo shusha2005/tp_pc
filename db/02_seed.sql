@@ -9,13 +9,13 @@ VALUES
 
 INSERT INTO public.admins (email, password_hash, username, club_id)
 VALUES
-  ('admin1@example.com', 'demo_hash', 'admin_cyber', (SELECT id FROM public.clubs WHERE name = 'Cyber Arena' LIMIT 1)),
-  ('admin2@example.com', 'demo_hash', 'admin_night', (SELECT id FROM public.clubs WHERE name = 'Night Raid' LIMIT 1));
+  ('admin1@example.com', 'pbkdf2_sha256$1000000$1gZ7DM1qblUecgkNPmgfhs$MxJkQR7GB0GmuPFtRddvOX5m+oQd8cHQU8Kz24kO2SU=', 'admin_cyber', (SELECT id FROM public.clubs WHERE name = 'Cyber Arena' LIMIT 1)),
+  ('admin2@example.com', 'pbkdf2_sha256$1000000$1gZ7DM1qblUecgkNPmgfhs$MxJkQR7GB0GmuPFtRddvOX5m+oQd8cHQU8Kz24kO2SU=', 'admin_night', (SELECT id FROM public.clubs WHERE name = 'Night Raid' LIMIT 1));
 
 INSERT INTO public.users (email, password_hash, username, phone)
 VALUES
-  ('user1@example.com', 'demo_hash', 'user1', '+7 900 000-00-01'),
-  ('user2@example.com', 'demo_hash', 'user2', '+7 900 000-00-02');
+  ('user1@example.com', 'pbkdf2_sha256$1000000$S6Bdorv7jllIrW36YX32Jd$82uv2jJsDydGKH+ggf1xKBttKpRBGuBF/RKSEuxEUFA=', 'user1', '+7 900 000-00-01'),
+  ('user2@example.com', 'pbkdf2_sha256$1000000$S6Bdorv7jllIrW36YX32Jd$82uv2jJsDydGKH+ggf1xKBttKpRBGuBF/RKSEuxEUFA=', 'user2', '+7 900 000-00-02');
 
 -- PCs
 INSERT INTO public.pcs (number, processor, gpu, ram, storage_type, monitor_model, status, club_id)
