@@ -46,10 +46,6 @@ h2 {
   margin: 0 0 12px;
 }
 
-h3 {
-  margin: 16px 0 8px;
-}
-
 .form {
   display: grid;
   gap: 12px;
@@ -67,20 +63,6 @@ input {
   padding: 10px 12px;
   color: var(--fg);
   outline: none;
-}
-
-select {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: var(--fg);
-  outline: none;
-}
-
-select:focus {
-  border-color: rgba(110, 168, 254, 0.6);
-  box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.15);
 }
 
 input:focus {
@@ -110,33 +92,9 @@ button.secondary {
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* Link that looks like a button */
-a.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  border: 1px solid rgba(110, 168, 254, 0.5);
-  background: rgba(110, 168, 254, 0.14);
-  color: var(--fg);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-weight: 600;
-}
-
-a.btn.secondary {
-  border-color: var(--border);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 button.danger {
   border-color: rgba(255, 107, 107, 0.5);
   background: rgba(255, 107, 107, 0.12);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .out {
@@ -147,28 +105,5 @@ button:disabled {
   border-radius: 10px;
   overflow: auto;
   max-height: 320px;
-}
-
-.list {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.item {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.item strong {
-  display: inline-block;
-  margin-right: 8px;
-}
-
-.inline {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  align-items: end;
 }
 
