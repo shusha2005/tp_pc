@@ -46,6 +46,14 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
         if price_lte:
             qs = qs.filter(price__lte=price_lte)
 
+        price_gte = self.request.query_params.get("price_gte")
+        if price_gte:
+            qs = qs.filter(price__gte=price_gte)
+
+        has_photo = (self.request.query_params.get("has_photo") or "").strip().lower()
+        if has_photo in {"1", "true", "yes"}:
+            qs = qs.exclude(photo_url__isnull=True).exclude(photo_url__exact="")
+
         order = (self.request.query_params.get("order") or "").strip()
         allowed = {"price": "price", "name": "name", "id": "id"}
         if order:
