@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from rest_framework import authentication, exceptions
 
-from .models import User
+from .models import User, Admin
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ def _decode(token: str) -> dict:
     )
 
 
-def issue_tokens(user: User) -> TokenPair:
+def issue_tokens(user, subject_type="user") -> TokenPair:
     iat = _now()
     access_ttl = int(settings.JWT_AUTH["ACCESS_TOKEN_TTL_SECONDS"])
     refresh_ttl = int(settings.JWT_AUTH["REFRESH_TOKEN_TTL_SECONDS"])
@@ -54,6 +54,7 @@ def issue_tokens(user: User) -> TokenPair:
         "exp": iat + access_ttl,
         "sub": str(user.id),
         "username": user.username,
+        "subject_type": subject_type,
     }
     refresh_payload = {
         "iss": iss,
@@ -61,6 +62,7 @@ def issue_tokens(user: User) -> TokenPair:
         "iat": iat,
         "exp": iat + refresh_ttl,
         "sub": str(user.id),
+        "subject_type": subject_type,
     }
     return TokenPair(access=_encode(access_payload), refresh=_encode(refresh_payload))
 
@@ -96,13 +98,22 @@ class JWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("Invalid token type.")
 
         user_id = payload.get("sub")
+        subject_type = payload.get("subject_type", "user")
         if not user_id:
             raise exceptions.AuthenticationFailed("Invalid token payload.")
 
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            raise exceptions.AuthenticationFailed("User not found.")
+        if subject_type == "user":
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                raise exceptions.AuthenticationFailed("User not found.")
+        elif subject_type == "admin":
+            try:
+                user = Admin.objects.get(id=user_id)
+            except Admin.DoesNotExist:
+                raise exceptions.AuthenticationFailed("Admin not found.")
+        else:
+            raise exceptions.AuthenticationFailed("Invalid subject type.")
 
         return (user, None)
 
@@ -116,5 +127,17 @@ def get_user_by_login(login: str) -> Optional[User]:
     try:
         return User.objects.get(username=login)
     except User.DoesNotExist:
+        return None
+
+
+def get_admin_by_login(login: str) -> Optional[Admin]:
+    # login can be email or username
+    try:
+        return Admin.objects.get(email=login)
+    except Admin.DoesNotExist:
+        pass
+    try:
+        return Admin.objects.get(username=login)
+    except Admin.DoesNotExist:
         return None
 

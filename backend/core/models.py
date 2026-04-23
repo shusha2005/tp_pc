@@ -27,10 +27,21 @@ class Club(models.Model):
     address = models.TextField()
     phone = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    photo_url = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
         db_table = "clubs"
+        managed = False
+
+
+class ClubPhoto(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="photos")
+    url = models.TextField()
+
+    class Meta:
+        db_table = "club_photos"
         managed = False
 
 
@@ -52,6 +63,7 @@ class Pc(models.Model):
     processor = models.TextField(blank=True, null=True)
     gpu = models.TextField(blank=True, null=True)
     ram = models.TextField(blank=True, null=True)
+    storage_type = models.TextField(blank=True, null=True)
     monitor_model = models.TextField(blank=True, null=True)
     status = models.TextField()
     club = models.ForeignKey(Club, on_delete=models.CASCADE)
