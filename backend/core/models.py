@@ -10,7 +10,7 @@ class User(models.Model):
 
     class Meta:
         db_table = "users"
-        managed = False
+        managed = True
 
     @property
     def is_authenticated(self) -> bool:
@@ -32,7 +32,7 @@ class Club(models.Model):
 
     class Meta:
         db_table = "clubs"
-        managed = False
+        managed = True
 
 
 class ClubPhoto(models.Model):
@@ -42,7 +42,7 @@ class ClubPhoto(models.Model):
 
     class Meta:
         db_table = "club_photos"
-        managed = False
+        managed = True
 
 
 class Admin(models.Model):
@@ -54,7 +54,7 @@ class Admin(models.Model):
 
     class Meta:
         db_table = "admins"
-        managed = False
+        managed = True
 
 
 class Pc(models.Model):
@@ -69,7 +69,7 @@ class Pc(models.Model):
 
     class Meta:
         db_table = "pcs"
-        managed = False
+        managed = True
         unique_together = (("club", "number"),)
 
 
@@ -82,7 +82,7 @@ class Peripheral(models.Model):
 
     class Meta:
         db_table = "peripherals"
-        managed = False
+        managed = True
 
 
 class PcPeripheral(models.Model):
@@ -93,7 +93,7 @@ class PcPeripheral(models.Model):
 
     class Meta:
         db_table = "pc_peripherals"
-        managed = False
+        managed = True
         unique_together = (("pc", "peripheral"),)
 
 
@@ -107,7 +107,7 @@ class Tariff(models.Model):
 
     class Meta:
         db_table = "tariffs"
-        managed = False
+        managed = True
 
 
 class Booking(models.Model):
@@ -122,4 +122,4 @@ class Booking(models.Model):
 
     class Meta:
         db_table = "bookings"
-        managed = False
+        managed = True
