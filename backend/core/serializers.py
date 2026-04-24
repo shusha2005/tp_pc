@@ -59,7 +59,6 @@ class PcSerializer(serializers.ModelSerializer):
             "processor",
             "gpu",
             "ram",
-            "storage_type",
             "monitor_model",
             "status",
             "peripherals",
@@ -209,7 +208,7 @@ class PcManageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pc
-        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "storage_type", "monitor_model", "status"]
+        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "monitor_model", "status"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):

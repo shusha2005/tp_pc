@@ -102,10 +102,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         if ram:
             qs = qs.filter(ram__icontains=ram)
 
-        storage_type = self.request.query_params.get("storage_type")
-        if storage_type:
-            qs = qs.filter(storage_type__iexact=storage_type)
-
         monitor = self.request.query_params.get("monitor")
         if monitor:
             qs = qs.filter(monitor_model__icontains=monitor)
@@ -129,7 +125,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(gpu__icontains=q)
                 | Q(processor__icontains=q)
                 | Q(ram__icontains=q)
-                | Q(storage_type__icontains=q)
                 | Q(monitor_model__icontains=q)
                 | Q(pcperipheral__peripheral__model__icontains=q)
                 | Q(pcperipheral__peripheral__brand__icontains=q)
@@ -159,7 +154,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         processors = sorted({v for v in base.values_list("processor", flat=True) if v})
         rams = sorted({v for v in base.values_list("ram", flat=True) if v})
         statuses = sorted({v for v in base.values_list("status", flat=True) if v})
-        storage_types = sorted({v for v in base.values_list("storage_type", flat=True) if v})
         per_qs = (
             PcPeripheral.objects.filter(pc_id__in=pc_ids)
             .select_related("peripheral")
@@ -175,7 +169,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
                 "processors": processors,
                 "rams": rams,
                 "statuses": statuses,
-                "storage_types": storage_types,
                 "peripheral_types": types,
                 "peripheral_brands": brands,
                 "peripheral_models": models,

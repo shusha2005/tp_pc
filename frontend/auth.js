@@ -63,10 +63,26 @@ async function loadAdminClubOptions() {
 
 async function syncAuthFormUi() {
   if (!authForm) return;
+
   const fd = new FormData(authForm);
   const principal = String(fd.get("principal") || "user");
-  if (adminClubField) adminClubField.style.display = "none";
-  if (principal === "admin") await loadAdminClubOptions();
+  const mode = String(fd.get("mode") || "login");
+
+  //  скрываем/показываем поля регистрации
+  const registerFields = document.querySelectorAll('.register-only');
+  registerFields.forEach(field => {
+    field.style.display = mode === "register" ? "" : "none";
+  });
+
+  //  клуб только для админа при регистрации
+  if (adminClubField) {
+    if (principal === "admin" && mode === "register") {
+      adminClubField.style.display = "";
+      await loadAdminClubOptions();
+    } else {
+      adminClubField.style.display = "none";
+    }
+  }
 }
 
 authForm?.addEventListener("change", async () => {

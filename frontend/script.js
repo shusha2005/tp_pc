@@ -253,7 +253,7 @@ async function loadClubs() {
       <div>Цена: ${club.price} руб/час | Телефон: ${club.phone || "-"}</div>
       <div>Фото: ${photoLinks}</div>
       <div class="row">
-        <button type="button" data-club-id="${club.id}" class="secondary">Выбрать клуб</button>
+        <button type="button" data-club-id="${club.id}" data-club-name="${club.name}" class="secondary">Выбрать клуб</button>
       </div>
     `
     }
@@ -290,6 +290,23 @@ async function loadPcs(clubId) {
     order: "number",
   };
   const pcs = await fetchAllPages("/pcs/", params, { auth: true });
+  const gpus = new Set();
+  const processors = new Set();
+  const rams = new Set();
+  const storages = new Set();
+
+  pcs.forEach(pc => {
+    if (pc.gpu) gpus.add(pc.gpu);
+    if (pc.processor) processors.add(pc.processor);
+    if (pc.ram) rams.add(pc.ram);
+    if (pc.storage_type) storages.add(pc.storage_type);
+    });
+
+    // заполняем select'ы
+  fillSelect(gpuSelect, gpus);
+  fillSelect(processorSelect, processors);
+  fillSelect(ramSelect, rams);
+  fillSelect(storageTypeSelect, storages);
   renderList(
     pcsListEl,
     pcs,
@@ -1005,4 +1022,29 @@ if (!getAccessToken()) {
     loadClubs().catch((err) => setOut({ error: true, ...err }));
   }
 }
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-club-id]");
+  if (!btn) return;
 
+  const clubId = btn.dataset.clubId;
+  const clubName = btn.dataset.clubName;
+
+  document.getElementById("clubSearchInput").value = clubName;
+  document.getElementById("clubQuickSelect").value = clubId;
+});
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-pc-id]");
+  if (!btn) return;
+
+  const pcId = btn.dataset.pcId;
+
+  // 👉 находим поле поиска
+  const searchInput = document.querySelector('#pcsFilterForm input[name="q"]');
+  if (!searchInput) return;
+
+  // 👉 вставляем выбранный ПК
+  searchInput.value = `ПК #${pcId}`;
+
+  console.log("Выбран ПК:", pcId);
+});

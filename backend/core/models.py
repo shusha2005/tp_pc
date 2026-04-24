@@ -63,7 +63,6 @@ class Pc(models.Model):
     processor = models.TextField(blank=True, null=True)
     gpu = models.TextField(blank=True, null=True)
     ram = models.TextField(blank=True, null=True)
-    storage_type = models.TextField(blank=True, null=True)
     monitor_model = models.TextField(blank=True, null=True)
     status = models.TextField()
     club = models.ForeignKey(Club, on_delete=models.CASCADE)
