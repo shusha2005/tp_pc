@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Клуб — PC Club Booking</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" data-site-header></header>
+
+    <main class="page">
+      <nav class="breadcrumb">
+        <a href="./clubs.html">Клубы</a>
+        <span>/</span>
+        <span id="breadcrumbName">...</span>
+      </nav>
+
+      <div id="clubHero" class="club-hero card"></div>
+
+      <section class="card">
+        <h2>Компьютеры</h2>
+        <form id="pcsFilterForm" class="form inline">
+          <label class="field">
+            <span>Поиск</span>
+            <input name="q" type="text" placeholder="GPU, CPU, RAM..." />
+          </label>
+          <label class="field">
+            <span>Статус</span>
+            <select name="status" id="pcStatusSelect"><option value="">любой</option></select>
+          </label>
+          <label class="field">
+            <span>GPU</span>
+            <select name="gpu" id="gpuSelect"><option value="">любой</option></select>
+          </label>
+          <label class="field">
+            <span>CPU</span>
+            <select name="processor" id="processorSelect"><option value="">любой</option></select>
+          </label>
+          <label class="field">
+            <span>RAM</span>
+            <select name="ram" id="ramSelect"><option value="">любая</option></select>
+          </label>
+          <label class="field">
+            <span>Накопитель</span>
+            <select name="storage_type" id="storageTypeSelect"><option value="">любой</option></select>
+          </label>
+          <div class="row">
+            <button type="submit">Применить</button>
+            <button type="button" class="secondary" id="btnPcsReset">Сброс</button>
+          </div>
+        </form>
+        <div id="pcsList" class="list-cards" style="margin-top:16px"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">PC Club Booking</footer>
+    <script type="module" src="./js/club.js"></script>
+  </body>
+</html>

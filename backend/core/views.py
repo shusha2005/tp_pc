@@ -102,6 +102,10 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         if ram:
             qs = qs.filter(ram__icontains=ram)
 
+        storage_type = self.request.query_params.get("storage_type")
+        if storage_type:
+            qs = qs.filter(storage_type__iexact=storage_type)
+
         monitor = self.request.query_params.get("monitor")
         if monitor:
             qs = qs.filter(monitor_model__icontains=monitor)
@@ -153,6 +157,7 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         gpus = sorted({v for v in base.values_list("gpu", flat=True) if v})
         processors = sorted({v for v in base.values_list("processor", flat=True) if v})
         rams = sorted({v for v in base.values_list("ram", flat=True) if v})
+        storage_types = sorted({v for v in base.values_list("storage_type", flat=True) if v})
         statuses = sorted({v for v in base.values_list("status", flat=True) if v})
         per_qs = (
             PcPeripheral.objects.filter(pc_id__in=pc_ids)
@@ -168,6 +173,7 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
                 "gpus": gpus,
                 "processors": processors,
                 "rams": rams,
+                "storage_types": storage_types,
                 "statuses": statuses,
                 "peripheral_types": types,
                 "peripheral_brands": brands,
@@ -181,7 +187,11 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.filter(user_id=self.request.user.id).order_by("-created_at")
+        return (
+            Booking.objects.filter(user_id=self.request.user.id)
+            .select_related("pc", "pc__club")
+            .order_by("-created_at")
+        )
 
     def _resolve_price_per_hour(self, pc: Pc, moment):
         local_dt = timezone.localtime(moment) if timezone.is_aware(moment) else moment
@@ -229,6 +239,15 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         serializer.save(**save_kwargs)
 
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        booking = self.get_object()
+        if booking.status in {"cancelled", "completed"}:
+            raise ValidationError({"status": ["Бронирование уже завершено или отменено."]})
+        booking.status = "cancelled"
+        booking.save(update_fields=["status"])
+        return Response(BookingSerializer(booking).data)
+
     @action(detail=False, methods=["get"], url_path="available-slots")
     def available_slots(self, request):
         pc_id_raw = request.query_params.get("pc_id")
@@ -259,6 +278,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         pc = Pc.objects.select_related("club").filter(id=pc_id).first()
         if not pc:
             raise ValidationError({"pc_id": ["ПК не найден."]})
+        if pc.status != "active":
+            raise ValidationError({"pc_id": ["ПК недоступен для бронирования."]})
 
         tz = timezone.get_current_timezone()
         day_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)

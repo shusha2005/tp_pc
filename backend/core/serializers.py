@@ -6,9 +6,17 @@ from .models import Admin, Booking, Club, ClubPhoto, Pc, PcPeripheral, Periphera
 
 
 class ClubListSerializer(serializers.ModelSerializer):
+    photo = serializers.SerializerMethodField()
+
     class Meta:
         model = Club
-        fields = ["id", "name", "address", "phone", "description", "price"]
+        fields = ["id", "name", "address", "phone", "description", "price", "photo"]
+
+    def get_photo(self, obj: Club):
+        if obj.photo_url:
+            return obj.photo_url
+        first = ClubPhoto.objects.filter(club_id=obj.id).values_list("url", flat=True).first()
+        return first
 
 
 class ClubDetailSerializer(serializers.ModelSerializer):
@@ -59,6 +67,7 @@ class PcSerializer(serializers.ModelSerializer):
             "processor",
             "gpu",
             "ram",
+            "storage_type",
             "monitor_model",
             "status",
             "peripherals",
@@ -72,13 +81,32 @@ class PcSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(read_only=True)
     pc_id = serializers.IntegerField()
+    pc_number = serializers.SerializerMethodField()
+    club_name = serializers.SerializerMethodField()
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     status = serializers.CharField(required=False)
 
     class Meta:
         model = Booking
-        fields = ["id", "start_time", "end_time", "total_price", "status", "created_at", "user_id", "pc_id"]
-        read_only_fields = ["id", "created_at", "user_id"]
+        fields = [
+            "id",
+            "start_time",
+            "end_time",
+            "total_price",
+            "status",
+            "created_at",
+            "user_id",
+            "pc_id",
+            "pc_number",
+            "club_name",
+        ]
+        read_only_fields = ["id", "created_at", "user_id", "pc_number", "club_name"]
+
+    def get_pc_number(self, obj: Booking):
+        return getattr(obj.pc, "number", None)
+
+    def get_club_name(self, obj: Booking):
+        return getattr(getattr(obj.pc, "club", None), "name", None)
 
     def create(self, validated_data):
         user_id = validated_data.pop("user_id", None)
@@ -208,7 +236,7 @@ class PcManageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pc
-        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "monitor_model", "status"]
+        fields = ["id", "club_id", "number", "processor", "gpu", "ram", "storage_type", "monitor_model", "status"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):

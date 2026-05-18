@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Клубы — PC Club Booking</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" data-site-header></header>
+
+    <main class="page">
+      <h1 class="page-title">Компьютерные клубы</h1>
+      <p class="page-subtitle">Выберите клуб и перейдите к выбору ПК.</p>
+
+      <section class="card">
+        <form id="clubsFilterForm" class="form inline">
+          <label class="field">
+            <span>Поиск</span>
+            <input name="q" type="text" placeholder="название или адрес" />
+          </label>
+          <label class="field">
+            <span>Цена от, ₽/ч</span>
+            <input name="price_gte" type="number" min="0" step="1" />
+          </label>
+          <label class="field">
+            <span>Цена до, ₽/ч</span>
+            <input name="price_lte" type="number" min="0" step="1" />
+          </label>
+          <label class="field">
+            <span>Фото</span>
+            <select name="has_photo">
+              <option value="">любые</option>
+              <option value="1">только с фото</option>
+            </select>
+          </label>
+          <div class="row">
+            <button type="submit">Найти</button>
+            <button type="button" class="secondary" id="btnReset">Сброс</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="clubsGrid" class="grid-cards"></div>
+    </main>
+
+    <footer class="site-footer">PC Club Booking</footer>
+    <script type="module" src="./js/clubs.js"></script>
+  </body>
+</html>

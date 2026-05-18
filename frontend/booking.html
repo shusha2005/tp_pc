@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Бронирование — PC Club Booking</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" data-site-header></header>
+
+    <main class="page">
+      <nav class="breadcrumb">
+        <a href="./clubs.html">Клубы</a>
+        <span>/</span>
+        <a href="#" id="clubLink">Клуб</a>
+        <span>/</span>
+        <span id="pcLabel">ПК</span>
+      </nav>
+
+      <h1 class="page-title">Выбор времени</h1>
+      <p class="page-subtitle" id="bookingSubtitle">Загрузка...</p>
+
+      <section class="card">
+        <form id="slotsForm" class="form inline">
+          <label class="field">
+            <span>Дата</span>
+            <input name="date" type="date" required />
+          </label>
+          <label class="field">
+            <span>Длительность, мин</span>
+            <input name="duration_minutes" type="number" min="30" step="30" value="60" required />
+          </label>
+          <label class="field">
+            <span>Шаг, мин</span>
+            <input name="step_minutes" type="number" min="15" step="15" value="30" required />
+          </label>
+          <button type="submit">Показать слоты</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Свободные слоты</h2>
+        <div id="slotsGrid" class="slots-grid"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">PC Club Booking</footer>
+    <script type="module" src="./js/booking.js"></script>
+  </body>
+</html>

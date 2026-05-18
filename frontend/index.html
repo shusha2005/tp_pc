@@ -3,69 +3,54 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PC Club Booking</title>
+    <title>PC Club Booking — Бронирование мест в киберклубах</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="container">
-      <h1>PC Club Booking</h1>
-      <p class="muted">Страница 1: регистрация и вход.</p>
+    <header class="site-header" data-site-header></header>
 
-      <section class="card">
-        <h2>Авторизация</h2>
-        <form id="authForm" class="form">
-          <label class="field">
-            <span>Тип аккаунта</span>
-            <select name="principal">
-              <option value="user">Пользователь</option>
-              <option value="admin">Администратор</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Режим</span>
-            <select name="mode">
-              <option value="login">Вход</option>
-              <option value="register">Регистрация</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Логин (email или username для входа)</span>
-            <input name="login" type="text" placeholder="user@example.com" />
-          </label>
-          <label class="field register-only">
-            <span>Email</span>
-            <input name="email" type="email" placeholder="user@example.com" />
-          </label>
-          <label class="field register-only">
-            <span>Username</span>
-            <input name="username" type="text" placeholder="nickname" />
-          </label>
-          <label class="field register-only">
-            <span>Телефон (необязательно)</span>
-            <input name="phone" type="tel" placeholder="+7..." />
-          </label>
-          <label class="field" id="adminClubField" style="display: none">
-            <span>Клуб (для регистрации админа)</span>
-            <select name="club_id" id="adminClubSelect"></select>
-          </label>
-          <label class="field">
-            <span>Пароль</span>
-            <input name="password" type="password" placeholder="min 6 символов" minlength="6" required />
-          </label>
-
-          <div class="row">
-            <button type="submit">Продолжить</button>
-            <a class="btn secondary" id="btnGoApp" href="./app.html">Открыть кабинет</a>
-          </div>
-        </form>
+    <main class="page">
+      <section class="hero">
+        <h1>Бронируй место в лучших киберклубах</h1>
+        <p>
+          Сравнивай характеристики ПК, выбирай периферию и бронируй удобное время онлайн —
+          без звонков и очередей.
+        </p>
+        <div class="hero-actions">
+          <a class="btn" href="./clubs.html" id="ctaBrowse">Смотреть клубы</a>
+          <a class="btn secondary" href="./login.html">Войти / регистрация</a>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>Лог API</h2>
-        <pre id="out" class="out" aria-live="polite"></pre>
+      <section class="features">
+        <article class="feature-card">
+          <h3>Каталог клубов</h3>
+          <p>Фильтры по цене, адресу и наличию фото. Подробные карточки с описанием.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Характеристики ПК</h3>
+          <p>CPU, GPU, RAM, накопитель и периферия — выбирай место под свои задачи.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Онлайн-бронирование</h3>
+          <p>Свободные слоты на выбранный день с расчётом стоимости по тарифам клуба.</p>
+        </article>
       </section>
     </main>
-    <script src="./auth.js"></script>
+
+    <footer class="site-footer">PC Club Booking · Учебный проект</footer>
+
+    <script type="module">
+      import { initLayout } from "./js/nav.js";
+      import { isAuthenticated, getPrincipal } from "./js/api.js";
+
+      initLayout({ active: "./index.html" });
+
+      const cta = document.getElementById("ctaBrowse");
+      if (isAuthenticated()) {
+        cta.href = getPrincipal() === "admin" ? "./admin.html" : "./clubs.html";
+        cta.textContent = getPrincipal() === "admin" ? "Панель клуба" : "Мои клубы";
+      }
+    </script>
   </body>
 </html>
-

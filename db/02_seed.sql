@@ -7,6 +7,10 @@ BEGIN;
 ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE public.pcs ADD COLUMN IF NOT EXISTS storage_type TEXT;
 
+ALTER TABLE public.pcs DROP CONSTRAINT IF EXISTS pcs_storage_type_check;
+ALTER TABLE public.pcs ADD CONSTRAINT pcs_storage_type_check
+  CHECK (storage_type IS NULL OR storage_type IN ('SSD', 'HDD', 'SSD+HDD', 'NVMe'));
+
 TRUNCATE TABLE
   public.bookings,
   public.tariffs,
@@ -58,10 +62,24 @@ VALUES
     'pbkdf2_sha256$1000000$tyuUUldL2LOohVM5yNJhNl$XD//8FlxOyBw+zNuXU6mkERh0F6b4NdHvW+sHgE6WOs=',
     'arena_admin',
     (SELECT id FROM public.clubs WHERE name = 'eSport Arena' LIMIT 1)
+  ),
+  (
+    'oldschool.admin@example.com',
+    'pbkdf2_sha256$1000000$tyuUUldL2LOohVM5yNJhNl$XD//8FlxOyBw+zNuXU6mkERh0F6b4NdHvW+sHgE6WOs=',
+    'oldschool_admin',
+    (SELECT id FROM public.clubs WHERE name = 'Old School Club' LIMIT 1)
+  ),
+  (
+    'night.admin@example.com',
+    'pbkdf2_sha256$1000000$tyuUUldL2LOohVM5yNJhNl$XD//8FlxOyBw+zNuXU6mkERh0F6b4NdHvW+sHgE6WOs=',
+    'night_admin',
+    (SELECT id FROM public.clubs WHERE name = 'Night Owls' LIMIT 1)
   );
 
+-- Пароль для всех демо-пользователей: password123
 INSERT INTO public.users (email, password_hash, username, phone)
 VALUES
+  ('user@example.com', 'pbkdf2_sha256$1000000$3zbV7OHOx0vJCY3jIboftt$WzjpC4wD0MTTNjTQ2ZVc+p1nlVCzokRQKDryvIe1ZnY=', 'demo_user', '+7 900 000-00-01'),
   ('ivanov@example.com', 'pbkdf2_sha256$1000000$3zbV7OHOx0vJCY3jIboftt$WzjpC4wD0MTTNjTQ2ZVc+p1nlVCzokRQKDryvIe1ZnY=', 'ivanov', '+7 900 555-11-11'),
   ('petrova@example.com', 'pbkdf2_sha256$1000000$3zbV7OHOx0vJCY3jIboftt$WzjpC4wD0MTTNjTQ2ZVc+p1nlVCzokRQKDryvIe1ZnY=', 'petrova', '+7 900 555-22-22'),
   ('sidorov@example.com', 'pbkdf2_sha256$1000000$3zbV7OHOx0vJCY3jIboftt$WzjpC4wD0MTTNjTQ2ZVc+p1nlVCzokRQKDryvIe1ZnY=', 'sidorov', '+7 900 555-33-33');
@@ -158,13 +176,76 @@ JOIN public.clubs c ON c.name = l.club_name
 JOIN public.pcs p ON p.club_id = c.id AND p.number = l.pc_number
 JOIN public.peripherals per ON per.model = l.per_model;
 
--- Tariffs
+-- Tariffs: базовая цена + вечер / выходные / ночь
 INSERT INTO public.tariffs (club_id, day_of_week, time_from, time_to, price_per_hour)
-VALUES
-  ((SELECT id FROM public.clubs WHERE name = 'CyberZone' LIMIT 1), NULL, NULL, NULL, 150.00),
-  ((SELECT id FROM public.clubs WHERE name = 'eSport Arena' LIMIT 1), NULL, NULL, NULL, 250.00),
-  ((SELECT id FROM public.clubs WHERE name = 'Old School Club' LIMIT 1), NULL, NULL, NULL, 70.00),
-  ((SELECT id FROM public.clubs WHERE name = 'Night Owls' LIMIT 1), NULL, NULL, NULL, 180.00);
+SELECT c.id, t.dow, t.t_from::time, t.t_to::time, t.price
+FROM public.clubs c
+JOIN (
+  VALUES
+    -- CyberZone
+    ('CyberZone', NULL, NULL, NULL, 150.00),
+    ('CyberZone', NULL, '18:00', '23:00', 180.00),
+    ('CyberZone', 5, NULL, NULL, 170.00),
+    ('CyberZone', 6, NULL, NULL, 170.00),
+    -- eSport Arena
+    ('eSport Arena', NULL, NULL, NULL, 250.00),
+    ('eSport Arena', NULL, '17:00', '23:00', 300.00),
+    ('eSport Arena', 5, '10:00', '23:00', 280.00),
+    ('eSport Arena', 6, '10:00', '23:00', 280.00),
+    -- Old School Club
+    ('Old School Club', NULL, NULL, NULL, 70.00),
+    ('Old School Club', NULL, '16:00', '22:00', 85.00),
+    ('Old School Club', 5, NULL, NULL, 80.00),
+    ('Old School Club', 6, NULL, NULL, 80.00),
+    -- Night Owls
+    ('Night Owls', NULL, NULL, NULL, 180.00),
+    ('Night Owls', NULL, '22:00', '23:59', 220.00),
+    ('Night Owls', NULL, '00:00', '08:00', 200.00),
+    ('Night Owls', 5, '20:00', '23:59', 210.00),
+    ('Night Owls', 6, '20:00', '23:59', 210.00)
+) AS t(club_name, dow, t_from, t_to, price) ON t.club_name = c.name;
+
+-- Бронирования (даты относительно CURRENT_DATE, часовой пояс Europe/Moscow)
+-- Занятые слоты: status created/confirmed. Отменённые — не блокируют слоты.
+WITH booking_rows(
+  username, club_name, pc_number, day_offset, time_start, time_end, status, total_price
+) AS (
+  VALUES
+    -- Сегодня
+    ('ivanov', 'CyberZone', 1, 0, '10:00', '12:00', 'confirmed', 300.00),
+    ('petrova', 'CyberZone', 1, 0, '14:00', '16:00', 'created', 360.00),
+    ('sidorov', 'CyberZone', 2, 0, '18:00', '20:00', 'confirmed', 360.00),
+    ('demo_user', 'CyberZone', 5, 0, '12:00', '13:30', 'created', 225.00),
+    ('petrova', 'eSport Arena', 1, 0, '11:00', '13:00', 'confirmed', 500.00),
+    ('ivanov', 'eSport Arena', 2, 0, '15:00', '17:00', 'created', 500.00),
+    ('sidorov', 'Old School Club', 2, 0, '13:00', '15:00', 'confirmed', 140.00),
+    ('demo_user', 'Night Owls', 1, 0, '20:00', '22:00', 'created', 440.00),
+    ('petrova', 'Night Owls', 2, 0, '22:00', '23:30', 'confirmed', 330.00),
+    -- Завтра
+    ('ivanov', 'CyberZone', 6, 1, '10:00', '12:00', 'created', 300.00),
+    ('petrova', 'eSport Arena', 5, 1, '14:00', '16:00', 'confirmed', 500.00),
+    ('demo_user', 'Old School Club', 4, 1, '16:00', '18:00', 'created', 140.00),
+    ('sidorov', 'Night Owls', 4, 1, '19:00', '21:00', 'confirmed', 420.00),
+    -- Вчера (завершённые)
+    ('ivanov', 'CyberZone', 1, -1, '16:00', '18:00', 'completed', 360.00),
+    ('petrova', 'eSport Arena', 1, -1, '12:00', '14:00', 'completed', 500.00),
+    ('sidorov', 'Old School Club', 1, -1, '10:00', '12:00', 'completed', 140.00),
+    -- Отменённые (не блокируют слоты — для демо свободного времени)
+    ('sidorov', 'CyberZone', 5, 0, '20:00', '22:00', 'cancelled', 360.00)
+)
+INSERT INTO public.bookings (start_time, end_time, total_price, status, user_id, pc_id, created_at)
+SELECT
+  ((CURRENT_DATE + br.day_offset) + br.time_start::time) AT TIME ZONE 'Europe/Moscow',
+  ((CURRENT_DATE + br.day_offset) + br.time_end::time) AT TIME ZONE 'Europe/Moscow',
+  br.total_price,
+  br.status,
+  u.id,
+  p.id,
+  now() - (CASE WHEN br.day_offset < 0 THEN INTERVAL '2 days' ELSE INTERVAL '1 hour' END)
+FROM booking_rows br
+JOIN public.users u ON u.username = br.username
+JOIN public.clubs c ON c.name = br.club_name
+JOIN public.pcs p ON p.club_id = c.id AND p.number = br.pc_number;
 
 COMMIT;
 

@@ -84,7 +84,7 @@ def test_get_pcs(client):
         gpu="RTX 4060",
         ram="16 GB",
         monitor_model="Test Monitor",
-        status="free"
+        status="active"
     )
 
     response = client.get("/api/pcs/")
@@ -104,7 +104,7 @@ def test_filter_pcs_by_club(client):
         gpu="RTX 4060",
         ram="16 GB",
         monitor_model="Test Monitor",
-        status="free"
+        status="active"
     )
 
     response = client.get(f"/api/pcs/?club_id={club.id}")
@@ -128,7 +128,7 @@ def test_get_pc_filters(client):
         gpu="RTX 4060",
         ram="16 GB",
         monitor_model="Test Monitor",
-        status="free"
+        status="active"
     )
 
     response = client.get(f"/api/pcs/filters/?club_id={club.id}")

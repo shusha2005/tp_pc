@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Вход — PC Club Booking</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" data-site-header></header>
+
+    <main class="page page-narrow">
+      <h1 class="page-title" id="authTitle">Вход в аккаунт</h1>
+      <p class="page-subtitle" id="authSubtitle">Войдите или создайте аккаунт.</p>
+
+      <section class="card">
+        <form id="authForm" class="form">
+          <label class="field">
+            <span>Тип аккаунта</span>
+            <select name="principal" id="principalSelect">
+              <option value="user">Пользователь</option>
+              <option value="admin">Администратор клуба</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Режим</span>
+            <select name="mode" id="modeSelect">
+              <option value="login">Вход</option>
+              <option value="register">Регистрация</option>
+            </select>
+          </label>
+
+          <p class="auth-hint" id="authHint"></p>
+
+          <!-- Вход: один логин -->
+          <label class="field" data-show="login">
+            <span>Логин</span>
+            <input name="login" type="text" placeholder="email или username" autocomplete="username" />
+          </label>
+
+          <!-- Регистрация: email, username -->
+          <label class="field" data-show="register">
+            <span>Email</span>
+            <input name="email" type="email" placeholder="user@example.com" autocomplete="email" />
+          </label>
+
+          <label class="field" data-show="register">
+            <span>Имя пользователя (username)</span>
+            <input name="username" type="text" placeholder="nickname" autocomplete="username" />
+          </label>
+
+          <label class="field" data-show="register user" data-optional="true">
+            <span>Телефон <span class="muted">(необязательно)</span></span>
+            <input name="phone" type="tel" placeholder="+7 900 000-00-00" autocomplete="tel" />
+          </label>
+
+          <label class="field" data-show="register admin">
+            <span>Клуб</span>
+            <select name="club_id" id="adminClubSelect">
+              <option value="">— выберите клуб —</option>
+            </select>
+            <span class="auth-hint">Администратор привязывается к выбранному клубу.</span>
+          </label>
+
+          <label class="field">
+            <span>Пароль</span>
+            <input
+              name="password"
+              type="password"
+              minlength="6"
+              required
+              placeholder="минимум 6 символов"
+              autocomplete="current-password"
+            />
+          </label>
+
+          <label class="field" data-show="register">
+            <span>Повтор пароля</span>
+            <input
+              name="password_confirm"
+              type="password"
+              minlength="6"
+              placeholder="ещё раз"
+              autocomplete="new-password"
+            />
+          </label>
+
+          <button type="submit" class="btn" id="authSubmitBtn" style="width: 100%">Войти</button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">PC Club Booking</footer>
+    <script type="module" src="./js/login.js"></script>
+  </body>
+</html>

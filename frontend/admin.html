@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Панель клуба — PC Club Booking</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" data-site-header></header>
+
+    <main class="page">
+      <h1 class="page-title">Панель администратора</h1>
+      <p class="page-subtitle" id="adminGreeting">Управление клубом, ПК, тарифами и периферией.</p>
+
+      <section class="card">
+        <div class="row">
+          <button type="button" id="btnAdminLoad">Загрузить данные</button>
+        </div>
+
+        <div class="admin-section">
+          <h3>Клуб</h3>
+          <form id="adminClubForm" class="form inline">
+            <input type="hidden" name="id" />
+            <label class="field"><span>Название</span><input name="name" type="text" /></label>
+            <label class="field"><span>Адрес</span><input name="address" type="text" /></label>
+            <label class="field"><span>Телефон</span><input name="phone" type="text" /></label>
+            <label class="field"><span>Фото URL</span><input name="photo_url" type="text" /></label>
+            <label class="field"><span>Цена (база), ₽/ч</span><input name="price" type="number" min="0" step="1" /></label>
+            <label class="field"><span>Описание</span><input name="description" type="text" /></label>
+            <button type="button" id="btnAdminSaveClub">Сохранить клуб</button>
+          </form>
+          <form id="adminClubPhotoForm" class="form inline" style="margin-top:12px">
+            <label class="field"><span>Фото URL</span><input name="url" type="url" /></label>
+            <label class="field"><span>Или файл</span><input name="file" type="file" accept="image/*" /></label>
+            <button type="submit">Добавить фото</button>
+          </form>
+          <div id="adminClubPhotosList" class="list-cards" style="margin-top:12px"></div>
+        </div>
+
+        <div class="admin-section">
+          <h3>ПК</h3>
+          <form id="adminPcCreateForm" class="form inline">
+            <label class="field"><span>Номер</span><input name="number" type="number" min="1" required /></label>
+            <label class="field"><span>CPU</span><input name="processor" type="text" /></label>
+            <label class="field"><span>GPU</span><input name="gpu" type="text" /></label>
+            <label class="field"><span>RAM</span><input name="ram" type="text" /></label>
+            <label class="field">
+              <span>Накопитель</span>
+              <select name="storage_type">
+                <option value="">—</option>
+                <option value="SSD">SSD</option>
+                <option value="HDD">HDD</option>
+                <option value="SSD+HDD">SSD+HDD</option>
+                <option value="NVMe">NVMe</option>
+              </select>
+            </label>
+            <label class="field"><span>Монитор</span><input name="monitor_model" type="text" /></label>
+            <label class="field">
+              <span>Статус</span>
+              <select name="status" required>
+                <option value="active">active</option>
+                <option value="inactive">inactive</option>
+                <option value="maintenance">maintenance</option>
+              </select>
+            </label>
+            <button type="submit">Добавить ПК</button>
+          </form>
+          <div class="row" style="margin-top:12px">
+            <button type="button" class="secondary" id="btnAdminPcsPrev">←</button>
+            <span class="muted" id="adminPcsPageInfo">стр. 1</span>
+            <button type="button" class="secondary" id="btnAdminPcsNext">→</button>
+          </div>
+          <div id="adminPcsList" class="list-cards" style="margin-top:12px"></div>
+        </div>
+
+        <div class="admin-section">
+          <h3>Тарифы</h3>
+          <form id="adminTariffCreateForm" class="form inline">
+            <label class="field">
+              <span>День</span>
+              <select name="day_of_week">
+                <option value="">любой</option>
+                <option value="0">Пн</option>
+                <option value="1">Вт</option>
+                <option value="2">Ср</option>
+                <option value="3">Чт</option>
+                <option value="4">Пт</option>
+                <option value="5">Сб</option>
+                <option value="6">Вс</option>
+              </select>
+            </label>
+            <label class="field"><span>С</span><input name="time_from" type="time" /></label>
+            <label class="field"><span>До</span><input name="time_to" type="time" /></label>
+            <label class="field"><span>Цена/час</span><input name="price_per_hour" type="number" min="0" required /></label>
+            <button type="submit">Добавить тариф</button>
+          </form>
+          <div class="row" style="margin-top:12px">
+            <button type="button" class="secondary" id="btnAdminTariffsPrev">←</button>
+            <span class="muted" id="adminTariffsPageInfo">стр. 1</span>
+            <button type="button" class="secondary" id="btnAdminTariffsNext">→</button>
+          </div>
+          <div id="adminTariffsList" class="list-cards" style="margin-top:12px"></div>
+        </div>
+
+        <div class="admin-section">
+          <h3>Периферия и привязки</h3>
+          <form id="adminPeripheralCreateForm" class="form inline">
+            <label class="field">
+              <span>Тип</span>
+              <select name="type" required>
+                <option value="mouse">Мышь</option>
+                <option value="keyboard">Клавиатура</option>
+                <option value="headset">Гарнитура</option>
+                <option value="monitor">Монитор</option>
+                <option value="mousepad">Коврик</option>
+              </select>
+            </label>
+            <label class="field"><span>Бренд</span><input name="brand" type="text" /></label>
+            <label class="field"><span>Модель</span><input name="model" type="text" required /></label>
+            <button type="submit">Добавить</button>
+          </form>
+          <div id="adminPeripheralsList" class="list-cards" style="margin-top:12px"></div>
+          <form id="adminPcPeripheralForm" class="form inline" style="margin-top:16px">
+            <label class="field">
+              <span>ПК</span>
+              <select name="pc_id" id="adminPcPeripheralPcSelect" required></select>
+            </label>
+            <label class="field">
+              <span>Периферия</span>
+              <select name="peripheral_id" id="adminPcPeripheralSelect" required></select>
+            </label>
+            <label class="field"><span>Кол-во</span><input name="quantity" type="number" min="1" value="1" /></label>
+            <button type="submit">Привязать</button>
+          </form>
+          <div id="adminPcPeripheralsList" class="list-cards" style="margin-top:12px"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">PC Club Booking</footer>
+    <script type="module" src="./js/admin.js"></script>
+  </body>
+</html>
