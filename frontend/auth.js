@@ -10,6 +10,14 @@ function setOut(value) {
   outEl.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
+function toLogError(err) {
+  if (err && typeof err === "object") {
+    if ("status" in err || "data" in err) return { error: true, ...err };
+    if ("message" in err) return { error: true, message: err.message };
+  }
+  return { error: true, message: String(err) };
+}
+
 function setPrincipal(value) {
   localStorage.setItem("principal", value);
 }
@@ -50,25 +58,30 @@ function parsePaginated(data) {
 
 async function loadAdminClubOptions() {
   if (!adminClubSelect) return;
-  const data = await api("/clubs/?order=name&page_size=100");
-  const clubs = parsePaginated(data);
   adminClubSelect.innerHTML = "";
-  clubs.forEach((c) => {
-    const opt = document.createElement("option");
-    opt.value = String(c.id);
-    opt.textContent = `${c.name} (#${c.id})`;
-    adminClubSelect.appendChild(opt);
-  });
 }
 
 async function syncAuthFormUi() {
   if (!authForm) return;
+
   const fd = new FormData(authForm);
   const principal = String(fd.get("principal") || "user");
   const mode = String(fd.get("mode") || "login");
-  if (adminClubField) adminClubField.style.display = principal === "admin" && mode === "register" ? "grid" : "none";
-  if (principal === "admin" && mode === "register") {
-    await loadAdminClubOptions();
+
+  //  скрываем/показываем поля регистрации
+  const registerFields = document.querySelectorAll('.register-only');
+  registerFields.forEach(field => {
+    field.style.display = mode === "register" ? "" : "none";
+  });
+
+  //  клуб только для админа при регистрации
+  if (adminClubField) {
+    if (principal === "admin" && mode === "register") {
+      adminClubField.style.display = "";
+      await loadAdminClubOptions();
+    } else {
+      adminClubField.style.display = "none";
+    }
   }
 }
 
@@ -76,7 +89,7 @@ authForm?.addEventListener("change", async () => {
   try {
     await syncAuthFormUi();
   } catch (err) {
-    setOut({ error: true, ...err });
+    setOut(toLogError(err));
   }
 });
 
@@ -97,7 +110,6 @@ authForm?.addEventListener("submit", async (e) => {
             email: String(fd.get("email") || "").trim(),
             username: String(fd.get("username") || "").trim(),
             password,
-            club_id: Number(fd.get("club_id") || 0),
           },
         });
       } else {
@@ -130,7 +142,7 @@ authForm?.addEventListener("submit", async (e) => {
     setOut({ ok: true, principal, mode });
     window.location.href = "./app.html";
   } catch (err) {
-    setOut({ error: true, ...err });
+    setOut(toLogError(err));
   }
 });
 

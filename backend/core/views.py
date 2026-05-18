@@ -9,14 +9,15 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .auth import issue_tokens
-from .models import Booking, Club, Pc, PcPeripheral, Tariff
+from .models import Booking, Club, ClubPhoto, Pc, PcPeripheral, Peripheral, Tariff
 from .permissions import IsAdminPrincipal
 from .serializers import (
     AdminLoginSerializer,
     AdminRegisterSerializer,
     AdminMeSerializer,
     BookingSerializer,
-    ClubSerializer,
+    ClubDetailSerializer,
+    ClubListSerializer,
     ClubManageSerializer,
     LoginSerializer,
     MeSerializer,
@@ -25,11 +26,17 @@ from .serializers import (
     RegisterSerializer,
     TariffSerializer,
     TokenPairSerializer,
+    PeripheralSerializer,
+    PcPeripheralManageSerializer,
+    ClubPhotoSerializer,
 )
 
 
 class ClubViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ClubSerializer
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ClubListSerializer
+        return ClubDetailSerializer
 
     def get_queryset(self):
         qs = Club.objects.all().order_by("id")
@@ -52,7 +59,10 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
 
         has_photo = (self.request.query_params.get("has_photo") or "").strip().lower()
         if has_photo in {"1", "true", "yes"}:
-            qs = qs.exclude(photo_url__isnull=True).exclude(photo_url__exact="")
+            qs = qs.filter(
+                Q(photo_url__isnull=False) & ~Q(photo_url__exact="")
+                | Q(photos__url__isnull=False) & ~Q(photos__url__exact="")
+            ).distinct()
 
         order = (self.request.query_params.get("order") or "").strip()
         allowed = {"price": "price", "name": "name", "id": "id"}
@@ -92,10 +102,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         if ram:
             qs = qs.filter(ram__icontains=ram)
 
-        storage_type = self.request.query_params.get("storage_type")
-        if storage_type:
-            qs = qs.filter(storage_type__iexact=storage_type)
-
         monitor = self.request.query_params.get("monitor")
         if monitor:
             qs = qs.filter(monitor_model__icontains=monitor)
@@ -119,7 +125,6 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(gpu__icontains=q)
                 | Q(processor__icontains=q)
                 | Q(ram__icontains=q)
-                | Q(storage_type__icontains=q)
                 | Q(monitor_model__icontains=q)
                 | Q(pcperipheral__peripheral__model__icontains=q)
                 | Q(pcperipheral__peripheral__brand__icontains=q)
@@ -145,6 +150,10 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         """
         base = self.get_queryset()
         pc_ids = list(base.values_list("id", flat=True))
+        gpus = sorted({v for v in base.values_list("gpu", flat=True) if v})
+        processors = sorted({v for v in base.values_list("processor", flat=True) if v})
+        rams = sorted({v for v in base.values_list("ram", flat=True) if v})
+        statuses = sorted({v for v in base.values_list("status", flat=True) if v})
         per_qs = (
             PcPeripheral.objects.filter(pc_id__in=pc_ids)
             .select_related("peripheral")
@@ -156,6 +165,10 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
         models = sorted({row["peripheral__model"] for row in per_qs if row["peripheral__model"]})
         return Response(
             {
+                "gpus": gpus,
+                "processors": processors,
+                "rams": rams,
+                "statuses": statuses,
                 "peripheral_types": types,
                 "peripheral_brands": brands,
                 "peripheral_models": models,
@@ -164,9 +177,11 @@ class PcViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    queryset = Booking.objects.all().order_by("-created_at")
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Booking.objects.filter(user_id=self.request.user.id).order_by("-created_at")
 
     def _resolve_price_per_hour(self, pc: Pc, moment):
         local_dt = timezone.localtime(moment) if timezone.is_aware(moment) else moment
@@ -202,12 +217,10 @@ class BookingViewSet(viewsets.ModelViewSet):
         return total.quantize(Decimal("0.01"))
 
     def perform_create(self, serializer):
-        user = getattr(self.request, "user", None)
-        save_kwargs = {}
-        if user and getattr(user, "id", None) and not serializer.validated_data.get("user_id"):
-            save_kwargs["user_id"] = user.id
+        save_kwargs = {
+            "user_id": self.request.user.id,
+        }
 
-        # Расчет цены по тарифам клуба с fallback на базовую цену клуба.
         if serializer.validated_data.get("total_price") in (None, "", 0, Decimal("0")):
             pc = Pc.objects.select_related("club").get(id=serializer.validated_data["pc_id"])
             start = serializer.validated_data["start_time"]
@@ -349,6 +362,17 @@ class AdminClubViewSet(viewsets.ModelViewSet):
         return Club.objects.filter(id=self.request.user.club_id).order_by("id")
 
 
+class AdminClubPhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = ClubPhotoSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        return ClubPhoto.objects.filter(club_id=self.request.user.club_id).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(club_id=self.request.user.club_id)
+
+
 class AdminPcViewSet(viewsets.ModelViewSet):
     serializer_class = PcManageSerializer
     permission_classes = [IsAdminPrincipal]
@@ -375,3 +399,42 @@ class AdminTariffViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(club_id=self.request.user.club_id)
+
+
+class AdminPeripheralViewSet(viewsets.ModelViewSet):
+    serializer_class = PeripheralSerializer
+    permission_classes = [IsAdminPrincipal]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Peripheral.objects.all().order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class AdminPcPeripheralViewSet(viewsets.ModelViewSet):
+    serializer_class = PcPeripheralManageSerializer
+    permission_classes = [IsAdminPrincipal]
+
+    def get_queryset(self):
+        # Get all PC peripherals where the PC belongs to this admin's club
+        return PcPeripheral.objects.filter(
+            pc__club_id=self.request.user.club_id
+        ).select_related("pc", "peripheral").order_by("id")
+
+    def perform_create(self, serializer):
+        pc_id = serializer.validated_data.get("pc_id")
+        if pc_id is None:
+            raise ValidationError({"pc_id": ["Поле pc_id обязательно."]})
+        pc = Pc.objects.filter(id=pc_id, club_id=self.request.user.club_id).first()
+        if not pc:
+            raise ValidationError({"pc_id": ["Этот ПК не принадлежит вашему клубу или не найден."]})
+        serializer.save()
+
+    def perform_update(self, serializer):
+        pc_id = serializer.validated_data.get("pc_id", serializer.instance.pc_id)
+        pc = Pc.objects.filter(id=pc_id, club_id=self.request.user.club_id).first()
+        if not pc:
+            raise ValidationError({"pc_id": ["Этот ПК не принадлежит вашему клубу или не найден."]})
+        serializer.save()

@@ -3,7 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AdminClubViewSet,
+    AdminClubPhotoViewSet,
     AdminPcViewSet,
+    AdminPeripheralViewSet,
+    AdminPcPeripheralViewSet,
     AdminTariffViewSet,
     AuthViewSet,
     BookingViewSet,
@@ -17,7 +20,10 @@ router.register(r"pcs", PcViewSet, basename="pcs")
 router.register(r"bookings", BookingViewSet, basename="bookings")
 router.register(r"auth", AuthViewSet, basename="auth")
 router.register(r"admin/clubs", AdminClubViewSet, basename="admin-clubs")
+router.register(r"admin/club-photos", AdminClubPhotoViewSet, basename="admin-club-photos")
 router.register(r"admin/pcs", AdminPcViewSet, basename="admin-pcs")
+router.register(r"admin/peripherals", AdminPeripheralViewSet, basename="admin-peripherals")
+router.register(r"admin/pc-peripherals", AdminPcPeripheralViewSet, basename="admin-pc-peripherals")
 router.register(r"admin/tariffs", AdminTariffViewSet, basename="admin-tariffs")
 
 urlpatterns = [
