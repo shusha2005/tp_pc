@@ -136,6 +136,132 @@
           <div id="adminPcPeripheralsList" class="list-cards" style="margin-top:12px"></div>
         </div>
       </section>
+
+      <dialog id="dlgPcEdit">
+        <div class="dialog-header">
+          <h3 class="dialog-title">Редактировать ПК</h3>
+          <span class="kbd">Esc</span>
+        </div>
+        <div class="dialog-body">
+          <form id="pcEditForm" class="form">
+            <input type="hidden" name="id" />
+            <div class="form inline">
+              <label class="field"><span>Номер</span><input name="number" type="number" min="1" required /></label>
+              <label class="field"><span>CPU</span><input name="processor" type="text" /></label>
+              <label class="field"><span>GPU</span><input name="gpu" type="text" /></label>
+              <label class="field"><span>RAM</span><input name="ram" type="text" /></label>
+              <label class="field">
+                <span>Накопитель</span>
+                <select name="storage_type">
+                  <option value="">—</option>
+                  <option value="SSD">SSD</option>
+                  <option value="HDD">HDD</option>
+                  <option value="SSD+HDD">SSD+HDD</option>
+                  <option value="NVMe">NVMe</option>
+                </select>
+              </label>
+              <label class="field"><span>Монитор</span><input name="monitor_model" type="text" /></label>
+              <label class="field">
+                <span>Статус</span>
+                <select name="status" required>
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                  <option value="maintenance">maintenance</option>
+                </select>
+              </label>
+            </div>
+            <div class="dialog-actions">
+              <button type="button" class="secondary" data-dialog-cancel>Отмена</button>
+              <button type="submit">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <dialog id="dlgTariffEdit">
+        <div class="dialog-header">
+          <h3 class="dialog-title">Редактировать тариф</h3>
+          <span class="kbd">Esc</span>
+        </div>
+        <div class="dialog-body">
+          <form id="tariffEditForm" class="form">
+            <input type="hidden" name="id" />
+            <div class="form inline">
+              <label class="field">
+                <span>День</span>
+                <select name="day_of_week">
+                  <option value="">любой</option>
+                  <option value="0">Пн</option>
+                  <option value="1">Вт</option>
+                  <option value="2">Ср</option>
+                  <option value="3">Чт</option>
+                  <option value="4">Пт</option>
+                  <option value="5">Сб</option>
+                  <option value="6">Вс</option>
+                </select>
+              </label>
+              <label class="field"><span>С</span><input name="time_from" type="time" /></label>
+              <label class="field"><span>До</span><input name="time_to" type="time" /></label>
+              <label class="field"><span>Цена/час</span><input name="price_per_hour" type="number" min="0" required /></label>
+            </div>
+            <div class="dialog-actions">
+              <button type="button" class="secondary" data-dialog-cancel>Отмена</button>
+              <button type="submit">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <dialog id="dlgPeripheralEdit">
+        <div class="dialog-header">
+          <h3 class="dialog-title">Редактировать периферию</h3>
+          <span class="kbd">Esc</span>
+        </div>
+        <div class="dialog-body">
+          <form id="peripheralEditForm" class="form">
+            <input type="hidden" name="id" />
+            <div class="form inline">
+              <label class="field">
+                <span>Тип</span>
+                <select name="type" required>
+                  <option value="mouse">Мышь</option>
+                  <option value="keyboard">Клавиатура</option>
+                  <option value="headset">Гарнитура</option>
+                  <option value="monitor">Монитор</option>
+                  <option value="mousepad">Коврик</option>
+                </select>
+              </label>
+              <label class="field"><span>Бренд</span><input name="brand" type="text" /></label>
+              <label class="field"><span>Модель</span><input name="model" type="text" required /></label>
+              <label class="field"><span>Описание</span><input name="description" type="text" /></label>
+            </div>
+            <div class="dialog-actions">
+              <button type="button" class="secondary" data-dialog-cancel>Отмена</button>
+              <button type="submit">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <dialog id="dlgPcPeripheralEdit">
+        <div class="dialog-header">
+          <h3 class="dialog-title">Изменить количество</h3>
+          <span class="kbd">Esc</span>
+        </div>
+        <div class="dialog-body">
+          <form id="pcPeripheralEditForm" class="form">
+            <input type="hidden" name="id" />
+            <label class="field">
+              <span>Количество</span>
+              <input name="quantity" type="number" min="1" step="1" required />
+            </label>
+            <div class="dialog-actions">
+              <button type="button" class="secondary" data-dialog-cancel>Отмена</button>
+              <button type="submit">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
     </main>
 
     <footer class="site-footer">PC Club Booking</footer>

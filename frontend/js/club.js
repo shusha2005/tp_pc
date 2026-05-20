@@ -26,6 +26,25 @@ const storageTypeSelect = document.getElementById("storageTypeSelect");
 const PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='280'%3E%3Crect fill='%23121b2b' width='600' height='280'/%3E%3C/svg%3E";
 
+function clubSvgCover(title) {
+  const safe = String(title || "PC Club").slice(0, 28);
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="900" height="420">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop stop-color="#121b2b" offset="0"/>
+        <stop stop-color="#0f1624" offset="1"/>
+      </linearGradient>
+    </defs>
+    <rect width="900" height="420" fill="url(#g)"/>
+    <circle cx="720" cy="130" r="160" fill="rgba(110,168,254,0.18)"/>
+    <circle cx="820" cy="300" r="220" fill="rgba(81,207,102,0.08)"/>
+    <text x="50%" y="52%" fill="#e8eef9" text-anchor="middle" font-size="48" font-family="Segoe UI, Arial, sans-serif" font-weight="700">${safe}</text>
+    <text x="50%" y="64%" fill="#9aa8c0" text-anchor="middle" font-size="18" font-family="Segoe UI, Arial, sans-serif">Фото недоступно офлайн</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 function statusTag(status) {
   const cls = ["active", "inactive", "maintenance"].includes(status) ? status : "inactive";
   const labels = { active: "доступен", inactive: "недоступен", maintenance: "обслуживание" };
@@ -38,7 +57,10 @@ async function loadClub() {
   breadcrumbName.textContent = club.name;
   document.title = `${club.name} — PC Club Booking`;
 
-  const photo = (club.photos && club.photos[0]) || club.photo_url || PLACEHOLDER;
+  let photo = (club.photos && club.photos[0]) || club.photo_url || "";
+  photo = String(photo || "").trim();
+  if (!photo) photo = clubSvgCover(club.name);
+  if (photo.startsWith("http://") || photo.startsWith("https://")) photo = clubSvgCover(club.name);
   clubHero.innerHTML = `
     <img src="${photo}" alt="${club.name}" />
     <div>

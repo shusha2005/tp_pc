@@ -44,6 +44,36 @@ const adminPcPeripheralsListEl = document.getElementById("adminPcPeripheralsList
 const adminPcPeripheralPcSelect = document.getElementById("adminPcPeripheralPcSelect");
 const adminPcPeripheralSelect = document.getElementById("adminPcPeripheralSelect");
 
+const dlgPcEdit = document.getElementById("dlgPcEdit");
+const pcEditForm = document.getElementById("pcEditForm");
+const dlgTariffEdit = document.getElementById("dlgTariffEdit");
+const tariffEditForm = document.getElementById("tariffEditForm");
+const dlgPeripheralEdit = document.getElementById("dlgPeripheralEdit");
+const peripheralEditForm = document.getElementById("peripheralEditForm");
+const dlgPcPeripheralEdit = document.getElementById("dlgPcPeripheralEdit");
+const pcPeripheralEditForm = document.getElementById("pcPeripheralEditForm");
+
+function closeDialog(dlg) {
+  if (!dlg) return;
+  try {
+    dlg.close();
+  } catch {
+    // ignore
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-dialog-cancel]");
+  if (!btn) return;
+  const dlg = btn.closest("dialog");
+  closeDialog(dlg);
+});
+
+function openDialog(dlg) {
+  if (!dlg) return;
+  if (typeof dlg.showModal === "function") dlg.showModal();
+}
+
 async function loadMe() {
   const me = await api("/auth/admin-me/", { auth: true });
   adminGreeting.textContent = `Клуб #${me.club_id} · ${me.username} (${me.email})`;
@@ -102,7 +132,7 @@ async function adminLoadPcs() {
       <p class="muted">${pc.processor || "—"} · ${pc.gpu || "—"} · ${pc.ram || "—"} · ${pc.storage_type || "—"}</p>
       <p>Статус: ${pc.status}</p>
       <div class="row">
-        <button type="button" class="secondary small" data-pc-edit="${pc.id}">Изменить</button>
+        <button type="button" class="secondary small" data-pc-edit="${pc.id}">Редактировать</button>
         <button type="button" class="danger small" data-pc-delete="${pc.id}">Удалить</button>
       </div>
     `
@@ -122,7 +152,10 @@ async function adminLoadTariffs() {
       <h3>Тариф #${t.id}</h3>
       <p>День: ${t.day_of_week ?? "любой"} · ${t.time_from || "—"}–${t.time_to || "—"}</p>
       <p>${formatPrice(t.price_per_hour)}/час</p>
-      <button type="button" class="danger small" data-tariff-delete="${t.id}">Удалить</button>
+      <div class="row">
+        <button type="button" class="secondary small" data-tariff-edit="${t.id}">Редактировать</button>
+        <button type="button" class="danger small" data-tariff-delete="${t.id}">Удалить</button>
+      </div>
     `
   );
   adminTariffsPageInfo.textContent = `стр. ${adminTariffsPage}`;
@@ -139,7 +172,10 @@ async function adminLoadPeripherals() {
     (p) => `
       <h3>${p.brand || ""} ${p.model}</h3>
       <p class="muted">${p.type}</p>
-      <button type="button" class="danger small" data-peripheral-delete="${p.id}">Удалить</button>
+      <div class="row">
+        <button type="button" class="secondary small" data-peripheral-edit="${p.id}">Редактировать</button>
+        <button type="button" class="danger small" data-peripheral-delete="${p.id}">Удалить</button>
+      </div>
     `
   );
   return pag.results;
@@ -179,7 +215,10 @@ async function loadAdminPcPeripherals() {
     pag.results,
     (pp) => `
       <p>ПК #${pp.pc?.number} → ${pp.peripheral?.brand || ""} ${pp.peripheral?.model} × ${pp.quantity}</p>
-      <button type="button" class="danger small" data-pp-delete="${pp.id}">Удалить</button>
+      <div class="row">
+        <button type="button" class="secondary small" data-pp-edit="${pp.id}" data-pp-qty="${pp.quantity}">Изменить</button>
+        <button type="button" class="danger small" data-pp-delete="${pp.id}">Удалить</button>
+      </div>
     `
   );
 }
@@ -262,10 +301,15 @@ adminPcsListEl?.addEventListener("click", async (e) => {
     const id = Number(editBtn.dataset.pcEdit);
     try {
       const pc = await adminApi(`pcs/${id}/`);
-      const status = prompt("Статус (active/inactive/maintenance)", pc.status) || pc.status;
-      await adminApi(`pcs/${id}/`, { method: "PATCH", body: { status } });
-      await adminLoadPcs();
-      showToast("ПК обновлён", "success");
+      pcEditForm.elements.id.value = pc.id;
+      pcEditForm.elements.number.value = pc.number ?? "";
+      pcEditForm.elements.processor.value = pc.processor ?? "";
+      pcEditForm.elements.gpu.value = pc.gpu ?? "";
+      pcEditForm.elements.ram.value = pc.ram ?? "";
+      pcEditForm.elements.storage_type.value = pc.storage_type ?? "";
+      pcEditForm.elements.monitor_model.value = pc.monitor_model ?? "";
+      pcEditForm.elements.status.value = pc.status ?? "active";
+      openDialog(dlgPcEdit);
     } catch (err) {
       showToast(formatApiError(err), "error");
     }
@@ -281,6 +325,32 @@ adminPcsListEl?.addEventListener("click", async (e) => {
     } catch (err) {
       showToast(formatApiError(err), "error");
     }
+  }
+});
+
+pcEditForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(pcEditForm);
+  const id = Number(fd.get("id"));
+  try {
+    await adminApi(`pcs/${id}/`, {
+      method: "PATCH",
+      body: {
+        number: Number(fd.get("number")),
+        processor: String(fd.get("processor") || "").trim() || null,
+        gpu: String(fd.get("gpu") || "").trim() || null,
+        ram: String(fd.get("ram") || "").trim() || null,
+        storage_type: String(fd.get("storage_type") || "").trim() || null,
+        monitor_model: String(fd.get("monitor_model") || "").trim() || null,
+        status: String(fd.get("status") || "active").trim(),
+      },
+    });
+    closeDialog(dlgPcEdit);
+    await adminLoadPcs();
+    await refreshPeripheralSelects();
+    showToast("ПК сохранён", "success");
+  } catch (err) {
+    showToast(formatApiError(err), "error");
   }
 });
 
@@ -331,11 +401,56 @@ btnAdminTariffsNext?.addEventListener("click", async () => {
 });
 
 adminTariffsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("[data-tariff-edit]");
   const btn = e.target.closest("[data-tariff-delete]");
+  if (editBtn) {
+    const id = Number(editBtn.dataset.tariffEdit);
+    try {
+      const t = await adminApi(`tariffs/${id}/`);
+      tariffEditForm.elements.id.value = t.id;
+      tariffEditForm.elements.day_of_week.value = t.day_of_week === null ? "" : String(t.day_of_week);
+      tariffEditForm.elements.time_from.value = t.time_from ?? "";
+      tariffEditForm.elements.time_to.value = t.time_to ?? "";
+      tariffEditForm.elements.price_per_hour.value = t.price_per_hour ?? "";
+      openDialog(dlgTariffEdit);
+    } catch (err) {
+      showToast(formatApiError(err), "error");
+    }
+    return;
+  }
   if (!btn || !confirm("Удалить тариф?")) return;
   try {
     await adminApi(`tariffs/${btn.dataset.tariffDelete}/`, { method: "DELETE" });
     await adminLoadTariffs();
+  } catch (err) {
+    showToast(formatApiError(err), "error");
+  }
+});
+
+tariffEditForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(tariffEditForm);
+  const id = Number(fd.get("id"));
+  const dayRaw = String(fd.get("day_of_week") || "").trim();
+  const timeFrom = String(fd.get("time_from") || "").trim();
+  const timeTo = String(fd.get("time_to") || "").trim();
+  if ((timeFrom && !timeTo) || (!timeFrom && timeTo)) {
+    showToast("Укажите оба времени или оставьте оба пустыми", "error");
+    return;
+  }
+  try {
+    await adminApi(`tariffs/${id}/`, {
+      method: "PATCH",
+      body: {
+        day_of_week: dayRaw === "" ? null : Number(dayRaw),
+        time_from: timeFrom || null,
+        time_to: timeTo || null,
+        price_per_hour: String(fd.get("price_per_hour") || "").trim(),
+      },
+    });
+    closeDialog(dlgTariffEdit);
+    await adminLoadTariffs();
+    showToast("Тариф сохранён", "success");
   } catch (err) {
     showToast(formatApiError(err), "error");
   }
@@ -362,12 +477,51 @@ adminPeripheralCreateForm?.addEventListener("submit", async (e) => {
 });
 
 adminPeripheralsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("[data-peripheral-edit]");
   const btn = e.target.closest("[data-peripheral-delete]");
+  if (editBtn) {
+    const id = Number(editBtn.dataset.peripheralEdit);
+    try {
+      const p = await adminApi(`peripherals/${id}/`);
+      peripheralEditForm.elements.id.value = p.id;
+      peripheralEditForm.elements.type.value = p.type ?? "mouse";
+      peripheralEditForm.elements.brand.value = p.brand ?? "";
+      peripheralEditForm.elements.model.value = p.model ?? "";
+      peripheralEditForm.elements.description.value = p.description ?? "";
+      openDialog(dlgPeripheralEdit);
+    } catch (err) {
+      showToast(formatApiError(err), "error");
+    }
+    return;
+  }
   if (!btn || !confirm("Удалить?")) return;
   try {
     await adminApi(`peripherals/${btn.dataset.peripheralDelete}/`, { method: "DELETE" });
     await refreshPeripheralSelects();
     await loadAdminPcPeripherals();
+  } catch (err) {
+    showToast(formatApiError(err), "error");
+  }
+});
+
+peripheralEditForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(peripheralEditForm);
+  const id = Number(fd.get("id"));
+  try {
+    await adminApi(`peripherals/${id}/`, {
+      method: "PATCH",
+      body: {
+        type: String(fd.get("type") || "").trim(),
+        brand: String(fd.get("brand") || "").trim() || null,
+        model: String(fd.get("model") || "").trim(),
+        description: String(fd.get("description") || "").trim() || null,
+      },
+    });
+    closeDialog(dlgPeripheralEdit);
+    await refreshPeripheralSelects();
+    await loadAdminPcPeripherals();
+    showToast("Периферия сохранена", "success");
   } catch (err) {
     showToast(formatApiError(err), "error");
   }
@@ -394,11 +548,37 @@ adminPcPeripheralForm?.addEventListener("submit", async (e) => {
 });
 
 adminPcPeripheralsListEl?.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("[data-pp-edit]");
   const btn = e.target.closest("[data-pp-delete]");
+  if (editBtn) {
+    pcPeripheralEditForm.elements.id.value = editBtn.dataset.ppEdit;
+    pcPeripheralEditForm.elements.quantity.value = editBtn.dataset.ppQty || "1";
+    openDialog(dlgPcPeripheralEdit);
+    return;
+  }
   if (!btn || !confirm("Удалить привязку?")) return;
   try {
     await adminApi(`pc-peripherals/${btn.dataset.ppDelete}/`, { method: "DELETE" });
     await loadAdminPcPeripherals();
+  } catch (err) {
+    showToast(formatApiError(err), "error");
+  }
+});
+
+pcPeripheralEditForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(pcPeripheralEditForm);
+  const id = Number(fd.get("id"));
+  const quantity = Number(fd.get("quantity"));
+  if (!Number.isFinite(quantity) || quantity < 1) {
+    showToast("Количество должно быть >= 1", "error");
+    return;
+  }
+  try {
+    await adminApi(`pc-peripherals/${id}/`, { method: "PATCH", body: { quantity } });
+    closeDialog(dlgPcPeripheralEdit);
+    await loadAdminPcPeripherals();
+    showToast("Количество обновлено", "success");
   } catch (err) {
     showToast(formatApiError(err), "error");
   }

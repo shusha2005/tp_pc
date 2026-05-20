@@ -8,9 +8,11 @@ const NAV_LINKS = {
   user: [
     { href: "./clubs.html", label: "Клубы" },
     { href: "./bookings.html", label: "Мои брони" },
+    { href: "./profile.html", label: "Профиль" },
   ],
   admin: [
     { href: "./admin.html", label: "Панель клуба" },
+    { href: "./profile.html", label: "Профиль" },
   ],
 };
 
